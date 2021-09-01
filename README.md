@@ -8,3 +8,4 @@ There are two steps to follow for creating an equivalent permeability curve:
 2) Run FEM_PEM_1D\main.m The losses created from 1) are used as inputs in the power-equivalent model. The equivalent permeability curve is stored in FEM_PEM_1D\Resultats_mu_aisi4340.
 
 ## Citation
+Please refer to CITATION.cff to cite this repository
