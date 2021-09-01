@@ -5,8 +5,6 @@ authors:
   given-names: "Gregory"
 - family-names: "Tousignant"
   given-names: "Maxime"
-- family-names: "Sirois"
-  given-names: "Frédéric"
 title: "PowerEquivalentModel"
 version: 1.0.0
 doi: 10.5281/zenodo.1234
