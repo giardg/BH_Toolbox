@@ -22,6 +22,8 @@ mu0 = 4*pi*1E-7;
 mu_im_out = mu_im_in;
 global param_phy
 
+
+%% Cas lineaire
 if param_phy.mattype == 1
     
     number_removed = sum(P < 0.025*max(P));
@@ -42,7 +44,9 @@ if param_phy.mattype == 1
     syms x
     fct=@(x) coeff(1)*x.^3+coeff(2)*x.^2+mu_H0;
     mu_real_out = [mu_real_new;fct(H_removed)];
+
     
+%% Cas anhyst arctan
 elseif param_phy.mattype == 2
     
     number_removed = sum(P < 0.025*max(P));
@@ -64,7 +68,9 @@ elseif param_phy.mattype == 2
     syms x
     fct=@(x) coeff(1)*x.^3+coeff(2)*x.^2+mu_H0;
     mu_real_out = [mu_real_new;fct(H_removed)];
+
     
+%% Cas hyst 3n param
 elseif param_phy.mattype == 3
     
     if max(H) > param_phy.ci
@@ -89,24 +95,15 @@ elseif param_phy.mattype == 3
     x2 = H_new(end);
     y2 = mu_real_new(end);
     dy2 = 0;
-    
+   
     mat = [3*x2^2,2*x2;x2^3,x2^2];
-    b = [dy2;y1];
+    b = [dy2;y2-y1];
     coeff = mat\b;
     
     syms x
-    fct=@(x) coeff(1)*x.^3+coeff(2)*x.^2;
+    fct=@(x) coeff(1)*x.^3+coeff(2)*x.^2+y1;
     mu_real_out = [mu_real_new;fct(H_removed)];
     mu_real_out = smooth(H,mu_real_out);
-   
-%     mat = [3*x2^2,2*x2;x2^3,x2^2];
-%     b = [dy2;y2-y1];
-%     coeff = mat\b;
-%     
-%     syms x
-%     fct=@(x) coeff(1)*x.^3+coeff(2)*x.^2+y1;
-%     mu_real_out = [mu_real_new;fct(H_removed)];
-%     mu_real_out = smooth(H,mu_real_out);
 
     
 elseif param_phy.mattype == 4

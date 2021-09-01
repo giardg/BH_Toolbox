@@ -1,0 +1,17 @@
+Duree d'un cycle (s)
+1.000000000000000e-04
+Nombre de pas de temps par cycle
+2000
+Taille du domaine de calcul (m)
+1.500000000000000e-03
+Nombre d'elements
+200
+Resistivite (Ohms/m)
+2.500000000000000e-07
+Type de courbe BH
+3
+Parametres de la courbe BH
+1.000000000000000e+00
+1.145915590261646e+00
+6.187493982525442e+02
+1.700000000000000e+03
