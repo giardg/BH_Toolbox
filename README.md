@@ -14,11 +14,11 @@ PEM_IO.m is the main script to run the Power-equivalent model. The input paramet
 The variable "mattype" is a number from 1 to 7, each describing one permeability model:
 1) Linear permeability (B = mu0.mu_r)
 2) Arctangent anhysteretic curve (B = mu0.H + (2.bsat/pi).atan((0.5 .pi.mu0.(murmax-1)/bsat).H))
-3) Hysteretic curve with 3n coeff Preisach model (B+ = Sum ai.atan((H+ci)/bi), B- = Sum ai.atan((H-ci)/bi))
+3) Hysteretic curve with Preisach model (3n coeff: B+ = Sum ai.atan((H+ci)/bi), B- = Sum ai.atan((H-ci)/bi))
 4) Limit case for high field (B = mu0.H+Bsat if H > Hsat, B = mu0.H-Bsat si H < -Hsat)
 5) Hysteretic with the major curve being an ellipse and described by the EFG formulation with Preisach's model
 6) Hysteretic with the major and minor curves being ellipses and described by Preisach's model
-7) Hysteretic curve with 4 parameters Preisach model (Br, Bsat, Hc, s <-> Wh)
+7) Hysteretic curve with Preisach model (4 parameters: Br, Bsat, Hc, s <-> Wh)
 
 The magnetic properties used in any model come from experimental measurements on a given material. The user can choose a specific model with "mattype" and modify the corresponding magnetic properties in PEM_IO.m. It is also possible to list the properties in order to create equivalent permeability curves at different temperatures, for example.
 
