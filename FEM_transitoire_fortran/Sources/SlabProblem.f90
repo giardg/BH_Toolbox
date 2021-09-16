@@ -37,6 +37,7 @@ module SlabProblemMod
   ! Tolerance Newton-Raphson
   integer, parameter, private                               :: iterNRmax  = 100
   double precision, parameter, private                      :: tolNewton  = 1.0d-12
+
   ! Tolerance algorithme de recherche du facteur de relaxation
   integer, parameter, private                               :: iterRelMax = 8
   
@@ -165,9 +166,29 @@ module SlabProblemMod
       do i = 1, 3*nint(bh(2))
         read(1,*) bh(2+i)
       end do
+      
     else if (mattype == 4) then
       read(1,*) bh(2)
       read(1,*) bh(3)
+
+    else if (mattype == 5) then
+      read(1,*) bh(2)
+      read(1,*) bh(3)
+      read(1,*) bh(4)
+
+    else if (mattype == 6) then
+      read(1,*) bh(2)
+      read(1,*) bh(3)
+      read(1,*) bh(4)
+
+    else if (mattype == 7) then
+      read(1,*) bh(2)
+      read(1,*) bh(3)
+      read(1,*) bh(4)
+      read(1,*) bh(5)
+      read(1,*) bh(6)
+      read(1,*) bh(7)
+      read(1,*) bh(8)
     else
       err = 1
       message = "Le type de materiau choisi n''est pas implemente."

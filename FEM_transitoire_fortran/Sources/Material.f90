@@ -55,9 +55,13 @@ module MaterialMod
   private                                                   :: GetPreisachParameters
   private                                                   :: CalculPreisachBH
   private                                                   :: CalculFG
+  private                                                   :: CalculFG4param
   private                                                   :: Everett
   private                                                   :: dEverettda
   private                                                   :: dEverettdb
+  private                                                   :: EverettEllipse
+  private                                                   :: dEverettEllipseda
+  private                                                   :: dEverettEllipsedb
   
   contains
   ! -------------------------------------------------------------------------------------------------------------------
@@ -82,6 +86,10 @@ module MaterialMod
     integer                                                 :: natan
     double precision, dimension(maxAtan)                    :: ai, bi, ci
     double precision                                        :: muFmax, bsat, brem
+
+    !Ellipse
+    double precision                                        :: a, b, alpha, Hmax
+
     ! Erreur
     character(len=maxStrLen)                                :: from, message
     
@@ -198,13 +206,79 @@ module MaterialMod
         call Error (from,message )
         return
       end if
-      
 
-    else
-      err = 1
-      message = "Le type de materiau choisi n''est pas implemente."
-      call Error (from,message )
-      return
+    else if ( mattype == 5 ) then
+      
+      ! Recuperation de ntanh, ai, bi, ci
+      Hmax = bh(4)
+      call GetEllipseParameters (bh,Hmax , a,b,alpha,brem)
+      
+      
+      ! Allocation de l'historique
+      Allocate ( nHist(nPtsTot), stat=err )
+      if ( err == 0 ) Allocate (dHist(2,nPtsTot) , stat=err)
+      if ( err == 0 ) Allocate (dHistA(maxHistLen,nPtsTot) , stat=err)
+      if ( err == 0 ) Allocate (dHistB(maxHistLen,nPtsTot) , stat=err)
+      if ( err /= 0 ) then
+        message = "Memoire insuffisante."
+        call Error (from,message )
+        return
+      end if
+      
+      ! Initialisation de l'historique
+      nHist = 1
+      dHist = 0.0d0
+      dHistA = 0.0d0
+      dHistB = 0.0d0
+
+    else if ( mattype == 6 ) then
+      
+      ! Recuperation de ntanh, ai, bi, ci
+      Hmax = bh(4)
+      call GetEllipseParameters (bh,Hmax, a,b,alpha,brem)
+      
+      
+      ! Allocation de l'historique
+      Allocate ( nHist(nPtsTot), stat=err )
+      if ( err == 0 ) Allocate (dHist(2,nPtsTot) , stat=err)
+      if ( err == 0 ) Allocate (dHistA(maxHistLen,nPtsTot) , stat=err)
+      if ( err == 0 ) Allocate (dHistB(maxHistLen,nPtsTot) , stat=err)
+      if ( err /= 0 ) then
+        message = "Memoire insuffisante."
+        call Error (from,message )
+        return
+      end if
+      
+      ! Initialisation de l'historique
+      nHist = 1
+      dHist = 0.0d0
+      dHistA = 0.0d0
+      dHistB = 0.0d0
+
+    else if ( mattype == 7 ) then
+      
+      ! Recuperation de ntanh, ai, bi, ci
+      brem = bh(2)
+      bsat = bh(3)
+      
+      ! Allocation de l'historique
+      Allocate ( nHist(nPtsTot), stat=err )
+      if ( err == 0 ) Allocate (dHist(2,nPtsTot) , stat=err)
+      if ( err == 0 ) Allocate (dHistA(maxHistLen,nPtsTot) , stat=err)
+      if ( err == 0 ) Allocate (dHistB(maxHistLen,nPtsTot) , stat=err)
+      if ( err /= 0 ) then
+        message = "Memoire insuffisante."
+        call Error (from,message )
+        return
+      end if
+      
+      ! Initialisation de l'historique
+      nHist = 1
+      dHist = 0.0d0
+      dHistA = 0.0d0
+      dHistB = 0.0d0
+
+    
       
     end if
     
@@ -354,6 +428,18 @@ module MaterialMod
     else
       B = (-bh(2)/(2.0d0*bh(3)**3.0d0))*(H**3.0d0)+(mu0+(3.0d0*bh(2))/(2.0d0*bh(3)))*H
     end if
+
+  else if ( mattype == 5 ) then
+    call CalculPreisachBH (bh,H , nHist(noPt),dHist(1,noPt),dHist(2,noPt),                                            &
+                             dHistA(1:maxHistLen,noPt),dHistB(1:maxHistLen,noPt) , B,dBdh)
+  
+  else if ( mattype == 6 ) then
+    call CalculPreisachBHEllipse (bh,H , nHist(noPt),dHist(1,noPt),dHist(2,noPt),                                            &
+                              dHistA(1:maxHistLen,noPt),dHistB(1:maxHistLen,noPt) , B,dBdh)
+
+  else if ( mattype == 7 ) then
+    call CalculPreisachBH (bh,H , nHist(noPt),dHist(1,noPt),dHist(2,noPt),                                            &
+                              dHistA(1:maxHistLen,noPt),dHistB(1:maxHistLen,noPt) , B,dBdh)
       
   end if
     
@@ -381,7 +467,7 @@ module MaterialMod
     integer                                                 :: mattype
     ! Modele de Preisach
     integer                                                 :: n
-    double precision                                        :: prevG, partialM
+    double precision                                        :: prevG, partialM, prevH
     double precision, dimension(maxHistLen)                 :: prevMax, prevMin
     
     ! Initialisation
@@ -422,6 +508,29 @@ module MaterialMod
         dBdH = (-3.0d0*bh(2)/(2.0d0*bh(3)**3.0d0))*(H**2.0d0)+(mu0+(3.0d0*bh(2))/(2.0d0*bh(3)))
       end if
 
+    else if ( mattype == 5 ) then
+      n = nHist(noPt)
+      prevG = dHist(1,noPt)
+      partialM = dHist(2,noPt)
+      prevMax = dHistA(1:maxHistLen,noPt)
+      prevMin = dHistB(1:maxHistLen,noPt)
+      call CalculPreisachBH (bh,H , n,prevG,partialM,prevMax,prevMin , B,dBdh)
+
+    else if ( mattype == 6 ) then
+      n = nHist(noPt)
+      prevH = dHist(1,noPt)
+      partialM = dHist(2,noPt)
+      prevMax = dHistA(1:maxHistLen,noPt)
+      prevMin = dHistB(1:maxHistLen,noPt)
+      call CalculPreisachBHEllipse (bh,H , n,prevH,partialM,prevMax,prevMin , B,dBdh)
+
+    else if ( mattype == 7 ) then
+      n = nHist(noPt)
+      prevG = dHist(1,noPt)
+      partialM = dHist(2,noPt)
+      prevMax = dHistA(1:maxHistLen,noPt)
+      prevMin = dHistB(1:maxHistLen,noPt)
+      call CalculPreisachBH (bh,H , n,prevG,partialM,prevMax,prevMin , B,dBdh)
       
     end if
     
@@ -540,7 +649,8 @@ module MaterialMod
     ! Modele de Preisach
     integer                                                 :: natan, prevn
     double precision                                        :: brem, F, dFdH, G, dGdH, Mirr, dMirrdG
-    
+    double precision                                        :: Hmax,Bdown,dBdowndH
+
     ! Initialisation
     B = mu0*H
     dBdH = mu0
@@ -548,7 +658,14 @@ module MaterialMod
     dMirrdG = 0.0d0
     
     ! Calcul des fonctions F(H) et G(H) et recuperation de brem
-    call CalculFG (bh,H , brem,F,dFdH,G,dGdH)
+    if (nint(bh(1)) == 3) then
+      call CalculFG (bh,H , brem,F,dFdH,G,dGdH)
+    else if (nint(bh(1)) == 5) then
+      Hmax = bh(4)
+      call CalculFGEllipse (bh,H,Hmax , brem,F,dFdH,G,dGdH,Bdown,dBdowndH)
+    else if (nint(bh(1)) == 7) then
+      call CalculFG4param (bh,H , brem,F,dFdH,G,dGdH)
+    end if
 
     ! Calcul du modele de Preisach si existence d'une partie irreversible
     if ( brem > epsilon(1.0d0) ) then
@@ -646,6 +763,8 @@ module MaterialMod
       
     ! Permeabilite differentielle
     dBdH = dBdH + dFdH + dMirrdG*dGdH
+
+    !write(*,*) B, dBdH, brem
     
     return
   end subroutine CalculPreisachBH
@@ -675,7 +794,7 @@ module MaterialMod
     
     ! Recuperation des parametres
     call GetPreisachParameters (bh , natan,ai,bi,ci,muFmax,brem,bsat)
-          
+        
     ! Cas H = 0
     if ( abs(H) < epsilon(1.0d0) ) then
       F = 0.0d0
@@ -787,5 +906,625 @@ module MaterialMod
     return
   end function dEverettdb
   ! ------------------------------------------------------------------------------------------------------------------- 
-end module MaterialMod
+
+  subroutine GetEllipseParameters (bh,Hmax_in , a,b,alpha,brem)
+    ! Description :
+    ! Recuperation des parametres de l'ellipse (a,b,alpha) a partir du vecteur bh.
+    implicit none
+    ! Inputs :
+    ! Parametres de la courbe BH
+    double precision, dimension(maxParam), intent(in)       :: bh
+    double precision, intent(in)                            :: Hmax_in
+    ! Outputs :
+    ! Parametres supplementaires
+    double precision, intent(out)                           :: a, b, alpha, brem
+
+    !Autres
+    double precision                                        :: delta, Hmax, Bmax, Hc, bnum, bdenom
+
+    Hmax = abs(Hmax_in)
+    delta = atan(-bh(3)/bh(2))
+    Bmax = mu0*sqrt(bh(2)**2.0d0 + bh(3)**2.0d0)*Hmax
+    Hc = Hmax*sin(delta)
+    alpha = atan(Bmax/Hmax)*cos(delta*0.9d0)
+
+    bnum = ((Hmax*sin(alpha)-Bmax*cos(delta)*cos(alpha))**2.0d0-(Hmax*sin(alpha)+Bmax*cos(delta)*sin(alpha)*tan(alpha))**2.0d0)
+    bdenom = (1-((Hmax+Bmax*cos(delta)*tan(alpha))/Hc)**2.0d0)
+    b = sqrt(bnum/bdenom)
+    a = sqrt(((Hc*cos(alpha))**2.0d0)/(1-(Hc*sin(alpha)/b)**2.0d0))
+    brem = sqrt(1.0d0/((sin(alpha)/a)**2.0d0 + (cos(alpha)/b)**2.0d0))
     
+    return
+  end subroutine GetEllipseParameters
+  ! ------------------------------------------------------------------------------------------------------------------- 
+
+  subroutine CalculFGEllipse (bh,H,Hmax , brem,F,dFdH,G,dGdH,Bdown,dBdowndH)
+    ! Description :
+    ! Calcul des fonction F(H) et G(H) pour le modele de Preisach. Recuperation de l'induction a remanence.
+    implicit none
+    ! Inputs :
+    ! Parametres de la courbe BH
+    double precision, dimension(maxParam), intent(in)       :: bh
+    ! Champ mag
+    double precision, intent(in)                            :: H
+    double precision, intent(in)                            :: Hmax
+    ! Outputs :
+    ! Induction a remanence
+    double precision, intent(out)                           :: brem
+    ! Valeur de la fonction F et sa derivee
+    double precision, intent(out)                           :: F, dFdH
+    ! Valeur de la fonction G et sa derivee
+    double precision, intent(out)                           :: G, dGdH
+    ! Valeur de la fonction B down et sa derivee
+    double precision, intent(out)                           :: Bdown, dBdowndH
+      
+    ! Variables :
+    double precision                                        :: a, b, alpha
+    double precision                                        :: A2, C, D, dCdH, dDdH, Bup, dBupdH,discr
+    ! Recuperation des parametres
+    call GetEllipseParameters (bh,Hmax , a,b,alpha,brem)
+    !write(*,*) a, b, alpha, brem
+    
+    if (abs(Hmax) < epsilon(1.0d0) ) then
+      brem = 0.0d0
+      F = 0.0d0
+      dFdH = 0.0d0
+      G = 0.0d0 
+      dGdH = 0.0d0 
+      Bdown = 0.0d0
+      dBdowndH = 0.0d0
+    else
+
+
+      if ( H < 0.0d0 ) then
+      
+        A2 = (sin(alpha)/a)**2.0d0 + (cos(alpha)/b)**2.0d0
+        C = 2.0d0*cos(alpha)*sin(alpha)*(1.0d0/(a**2.0d0) - 1.0d0/(b**2.0d0))*abs(H)
+        D = ((cos(alpha)/a)**2.0d0 + (sin(alpha)/b)**2.0d0)*(H**2.0d0) - 1.0d0
+        dCdH = 2.0d0*cos(alpha)*sin(alpha)*(1.0d0/(a**2.0d0) - 1.0d0/(b**2.0d0))
+        dDdH = 2.0d0*((cos(alpha)/a)**2.0d0 + (sin(alpha)/b)**2.0d0)*abs(H)
+  
+        discr = C**2.0d0 - 4.0d0*A2*D
+
+
+        Bdown = (-C + sqrt(discr))/(2.0d0*A2)
+        Bup = (-C - sqrt(discr))/(2.0d0*A2)
+        dBdowndH = (-dCdH + (2.0d0*dCdH*C - 4.0d0*A2*dDdH)/(2.0d0*sqrt(discr)))/(2.0d0*A2)
+        dBupdH = (-dCdH - (2.0d0*dCdH*C - 4.0d0*A2*dDdH)/(2.0d0*sqrt(discr)))/(2.0d0*A2)
+      
+        F = -(Bdown - brem -mu0*abs(H))
+        G = -(brem - (Bdown-Bup)/2.0d0)
+        dFdH = (dBdowndH - mu0)
+        dGdH = -(dBdowndH-dBupdH)/2.0d0
+      
+
+      ! Cas H > 0
+      else
+      
+        A2 = (sin(alpha)/a)**2.0d0 + (cos(alpha)/b)**2.0d0
+        C = 2.0d0*cos(alpha)*sin(alpha)*(1.0d0/(a**2.0d0) - 1.0d0/(b**2.0d0))*(H)
+        D = ((cos(alpha)/a)**2.0d0 + (sin(alpha)/b)**2.0d0)*(H**2.0d0) - 1.0d0
+        dCdH = 2.0d0*cos(alpha)*sin(alpha)*(1.0d0/(a**2.0d0) - 1.0d0/(b**2.0d0))
+        dDdH = 2.0d0*((cos(alpha)/a)**2.0d0 + (sin(alpha)/b)**2.0d0)*(H)
+      
+        discr = C**2.0d0 - 4.0d0*A2*D
+
+
+        Bdown = (-C + sqrt(discr))/(2.0d0*A2)
+        Bup = (-C - sqrt(discr))/(2.0d0*A2)
+        dBdowndH = (-dCdH + (2.0d0*dCdH*C - 4.0d0*A2*dDdH)/(2.0d0*sqrt(discr)))/(2.0d0*A2)
+        dBupdH = (-dCdH - (2.0d0*dCdH*C - 4.0d0*A2*dDdH)/(2.0d0*sqrt(discr)))/(2.0d0*A2)
+    
+
+        F = Bdown - brem -mu0*(H)
+        G = brem - (Bdown-Bup)/2.0d0
+        dFdH = (dBdowndH - mu0)
+        dGdH = -(dBdowndH-dBupdH)/2.0d0
+
+
+        
+      end if
+
+    end if
+    !write(*,*) F, G, dFdH, dGdH
+    return
+  end subroutine CalculFGEllipse
+  ! -------------------------------------------------------------------------------------------------------------------
+
+
+  subroutine CalculPreisachBHEllipse (bh,H , n,prevH,partialM,prevMax,prevMin, B,dBdH)
+    ! Description :
+    ! Calcul de B et sa derivee avec le modele de Preisach a 3n coefficients. Le calcul modifie l'historique.
+    implicit none
+    ! Inputs :
+    ! Parametres de la courbe BH
+    double precision, dimension(maxParam), intent(in)       :: bh
+    ! Champ magnetique
+    double precision, intent(in)                            :: H
+    ! Inouts :
+    ! Nombre de points dans l'historique
+    integer, intent(inout)                                  :: n
+    ! Valeur de G au pas de temps precedent
+    double precision, intent(inout)                         :: prevH
+    ! Valeur partielle de la magnetisation
+    double precision, intent(inout)                         :: partialM
+    ! Maxima precedents de G
+    double precision, dimension(maxHistLen), intent(inout)  :: prevMax
+    ! Minima precedents de G
+    double precision, dimension(maxHistLen), intent(inout)  :: prevMin
+    double precision                                        :: E1, E2, dE1, dE2
+    ! Outputs :
+    ! Induction et sa derivee
+    double precision, intent(out)                           :: B
+    double precision, intent(out)                           :: dBdH
+    
+    ! Variables :
+    integer                                                 :: j
+    ! Modele de Preisach
+    integer                                                 :: natan, prevn
+    double precision                                        :: brem, F, dFdH, G, dGdH, Mirr, dMirrdH
+    double precision                                        :: Hmax,Bdown,dBdowndH
+
+    ! Initialisation
+    B = mu0*H
+    dBdH = mu0
+    Mirr = 0.0d0
+    
+    ! Calcul des fonctions F(H) et G(H) et recuperation de brem
+    call CalculFGEllipse (bh,H,bh(4) , brem,F,dFdH,G,dGdH,Bdown,dBdowndH)
+    
+
+    ! Calcul du modele de Preisach si existence d'une partie irreversible
+    if ( brem > epsilon(1.0d0) ) then
+      
+      ! Mise-a-jour de la frontiere de Preisach
+      ! Copie du nombre de points dans l'historique
+      prevn = n
+ 
+      ! Champ croissant
+      if ( H > prevH ) then
+        do j = prevn, 0, -1
+          ! Saturation
+          if ( j == 0 ) then
+            n = 1
+            prevMax(1) =  abs(H)
+            prevMin(1) = -abs(H)
+          ! Wipe-out ou creation d'un nouvel extremum
+          elseif ( H < prevMax(j) ) then
+            n = j+1
+            prevMax(n) = H
+            prevMin(n) = prevMin(j)
+            exit
+          endif
+        enddo
+
+      ! Champ decroissant
+      else if ( H < prevH  ) then
+        do j =  prevn, 0, -1
+          ! Saturation
+          if ( j == 0 ) then
+            n = 1
+            prevMax(1) =  abs(H)
+            prevMin(1) = -abs(H)
+          ! Wipe-out ou creation d'un nouvel extremum
+            else if ( H > prevMin(j) ) then
+            n = j+1
+            prevMax(n) = prevMax(j)
+            prevMin(n) = H
+            exit
+          endif
+        enddo
+      
+      endif
+      
+      prevH = H
+
+      ! Calcul de la somme partielle si necessaire
+      if ( prevn /= n ) then
+        partialM = 0.0d0
+        do j = 2, n-1
+          if( prevMin(j-1) /= prevMin(j) )then
+            call EverettEllipse(prevMax(j),prevMin(j-1),bh, E1 )
+            call EverettEllipse(prevMax(j),prevMin(j),bh, E2)
+            partialM = partialM + 2.0d0*( E1 - E2)
+          endif
+        enddo
+      endif
+    
+      ! Calcul de la contribution irreversible a l'induction
+      ! Termes essentiels
+      call EverettEllipse(prevMax(1),prevMin(1),bh, E1  )
+      call EverettEllipse(H,prevMin(n),bh, E2  )
+      Mirr = -E1 + 2.0d0*E2
+
+      ! Ajout des termes supplementaires
+      if( n > 1 )then
+        Mirr = Mirr + partialM
+        if( prevMin(n-1) /= prevMin(n) )then
+          call EverettEllipse(prevMax(n),prevMin(n-1) ,bh, E1 )
+          call EverettEllipse(prevMax(n),prevMin(n),bh, E2 )
+          Mirr = Mirr + 2.0d0*( E1 - E2  )
+        end if
+      end if
+      
+      ! Calcul de la derivee de la partie irreversible
+      ! Champ croissant
+      if ( H > prevH ) then
+        call dEverettEllipseda(H,prevMin(n),bh, dE1 )
+        dMirrdH =  2.0d0*dE1
+        
+      ! Champ decroissant
+      else if ( H < prevH ) then
+        call dEverettEllipsedb(prevMax(n),H,bh, dE1 )
+        dMirrdH = -2.0d0*dE1
+         
+      ! Champ constant
+      else
+        call dEverettEllipseda(H,prevMin(n),bh, dE1 )
+        call dEverettEllipsedb(prevMax(n),H,bh, dE2 )
+        dMirrdH = dE1 - dE2
+      
+      end if
+      
+      ! Normalisation
+      !Mirr = Mirr / brem
+      !dMirrdH = dMirrdH / brem
+      
+      Mirr = Mirr
+      dMirrdH = dMirrdH
+      ! Mise-a-jour de la valeur precedente de G
+      
+      
+    end if
+    
+      
+    ! Addition des composantes reversibles et irreversibles
+    ! Induction
+    !B = B  + Mirr
+    B = Mirr
+      
+    ! Permeabilite differentielle
+    !dBdH = dBdH + dMirrdH
+    dBdH =  dMirrdH
+
+    !write(*,*) B, dBdH, brem
+    
+    return
+  end subroutine CalculPreisachBHEllipse
+! -------------------------------------------------------------------------------------------------------------------
+
+
+  subroutine EverettEllipse(alpha,beta,bh ,EverettEllipse_out)
+    ! Description :
+    ! Calcul de la fonction d'Everett bilineaire.
+    implicit none
+    ! Inputs :
+    double precision, intent(in)                            :: alpha, beta
+    double precision, dimension(maxParam), intent(in)       :: bh
+    ! Outputs :
+    double precision, intent(out)                           :: EverettEllipse_out
+    double precision                                        :: EverettEllipse1, EverettEllipse2
+    ! Variables:
+    ! Induction a remanence
+    double precision                                        :: brem,Bdown1,Bdown2
+    double precision                                        :: A2, C, D, discr,a,b,angle, C2, D2, discr2
+    double precision                                        :: beta2, alpha2
+
+
+    if (alpha < -beta) then
+      beta2 = -alpha
+      alpha2 = -beta
+    else
+      alpha2 = alpha
+      beta2 = beta
+    end if
+   
+    call GetEllipseParameters (bh,alpha2 , a,b,angle,brem)
+    if (abs(alpha2) < epsilon(1.0d0) ) then
+      Bdown1 = 0.0d0
+      Bdown2 = 0.0d0
+    else
+      A2 = (sin(angle)/a)**2.0d0 + (cos(angle)/b)**2.0d0
+      C = 2.0d0*cos(angle)*sin(angle)*(1.0d0/(a**2.0d0) - 1.0d0/(b**2.0d0))*(alpha2)
+      D = ((cos(angle)/a)**2.0d0 + (sin(angle)/b)**2.0d0)*(alpha2**2.0d0) - 1.0d0
+      discr = C**2.0d0 - 4.0d0*A2*D
+      Bdown1 = (-C + sqrt(discr))/(2.0d0*A2)
+
+      C2 = 2.0d0*cos(angle)*sin(angle)*(1.0d0/(a**2.0d0) - 1.0d0/(b**2.0d0))*(beta2)
+      D2 = ((cos(angle)/a)**2.0d0 + (sin(angle)/b)**2.0d0)*(beta2**2.0d0) - 1.0d0
+      discr2 = C2**2.0d0 - 4.0d0*A2*D2
+      Bdown2 = (-C2 + sqrt(discr2))/(2.0d0*A2)
+        
+    end if
+    EverettEllipse1 = (Bdown1 - Bdown2 )/2.0d0
+
+
+    !EverettEllipse2 = -4.979d-05*(beta2-alpha2)+4.351d-09*(beta2**2.0d0-alpha2**2.0d0)+1.392d-13*(beta2**3.0d0-alpha2**3.0d0)-&
+    !6.408d-13*(beta2*alpha2**2.0d0-beta2**2.0d0 * alpha2)
+    EverettEllipse2 = -5.823d-05*(beta2-alpha2)+6.94d-9*(beta2**2-alpha2**2)
+
+    if (alpha > 1000.0d0) then
+      !write(*,*) EverettEllipse1, EverettEllipse2
+    end if
+
+
+    EverettEllipse_out = EverettEllipse1
+    return
+  end subroutine EverettEllipse
+  ! -------------------------------------------------------------------------------------------------------------------
+  subroutine dEverettEllipseda(alpha,beta,bh, dEverettEllipseda_out )
+    ! Description :
+    ! Calcul de la derivee de la fonction d'Everett bilineaire.
+    implicit none
+    ! Inputs :
+    double precision, intent(in)                            :: alpha, beta
+    double precision, dimension(maxParam), intent(in)       :: bh
+    ! Outputs :
+    double precision, intent(out)                           :: dEverettEllipseda_out
+    double precision                                        :: dEverettEllipseda1, dEverettEllipseda2 
+    ! Variables:
+    ! Induction a remanence
+    double precision                                        :: dBdowndH1, dBdowndH2
+    double precision                                        :: alpha2, beta2
+    
+
+    if (alpha < -beta) then
+      beta2 = -alpha
+      alpha2 = -beta
+
+    else
+      alpha2 = alpha
+      beta2 = beta
+    end if
+    !dEverettEllipseda2 = -4.979d-05*(-1.0d0)+4.351d-09*(-2.0d0*alpha2)+1.392d-13*(-3.0d0*alpha2**2.0d0)-&
+    !6.408d-13*(2.0d0*beta2*alpha2-beta2**2.0d0)
+
+    dEverettEllipseda2 = -5.823d-05*(-1)+6.94d-9*(-alpha2*2)
+
+    call CalculdBdowndHmax1(alpha2,alpha2,bh, dBdowndH1)
+    call CalculdBdowndHmax1(alpha2,beta2,bh, dBdowndH2)
+    dEverettEllipseda1 = (dBdowndH1 -dBdowndH2 )/2.0d0
+    if (alpha > 1000.0d0) then
+      !write(*,*) dEverettEllipseda1, dEverettEllipseda2
+    end if
+
+    dEverettEllipseda_out = dEverettEllipseda1
+    
+    return
+  end subroutine dEverettEllipseda
+  ! -------------------------------------------------------------------------------------------------------------------
+  subroutine dEverettEllipsedb(alpha,beta,bh, dEverettEllipsedb_out )
+    ! Description :
+    ! Calcul de la derivee de la fonction d'Everett bilineaire.
+    implicit none
+    ! Inputs :
+    double precision, intent(in)                            :: alpha, beta
+    double precision, dimension(maxParam), intent(in)       :: bh
+    ! Outputs :
+    double precision, intent(out)                           :: dEverettEllipsedb_out
+    double precision                                        :: dEverettEllipsedb1, dEverettEllipsedb2
+    ! Variables:
+    ! Induction a remanence
+    double precision                                        :: dBdowndH1, dBdowndH2
+
+    double precision                                        :: alpha2, beta2
+
+    
+
+    if (alpha < -beta) then
+      beta2 = -alpha
+      alpha2 = -beta
+    else
+      alpha2 = alpha
+      beta2 = beta
+    end if
+    !dEverettEllipsedb2 = -4.979d-05*(1.0d0)+4.351d-09*(2*beta2)+1.392d-13*(3*beta2**2.0d0)-&
+    !6.408d-13*(alpha2**2.0d0-2.0d0*beta2 * alpha2)
+    dEverettEllipsedb2 = -5.823d-05+6.94d-9*(beta2*2)
+  
+
+
+    call CalculdBdowndH(alpha2,alpha2,bh, dBdowndH1)
+    call CalculdBdowndH(alpha2,beta2,bh, dBdowndH2)
+    dEverettEllipsedb1 = ( dBdowndH1-dBdowndH2 )/2.0d0
+    if (alpha > 1000.0d0) then
+      !write(*,*) dEverettEllipsedb1, dEverettEllipsedb2
+    end if
+
+    dEverettEllipsedb_out = dEverettEllipsedb1
+
+    return
+  end subroutine dEverettEllipsedb
+  ! ------------------------------------------------------------------------------------------------------------------- 
+
+  subroutine CalculdBdowndH (Hmax,H,bh, dBdowndH)
+    ! Description :
+    ! Calcul des fonction F(H) et G(H) pour le modele de Preisach. Recuperation de l'induction a remanence.
+    implicit none
+    ! Inputs :
+    ! Parametres de la courbe BH
+    double precision, dimension(maxParam), intent(in)       :: bh
+    ! Champ mag
+    double precision, intent(in)                            :: H
+    double precision, intent(in)                            :: Hmax
+    ! Outputs :
+    ! Valeur de la fonction B down et sa derivee
+    double precision, intent(out)                           :: dBdowndH
+      
+    ! Variables :
+    double precision                                        :: a, b, alpha, Bdown, discr, brem
+    double precision                                        :: num, denom, A2, C, D
+    ! Recuperation des parametres
+    
+
+    call GetEllipseParameters (bh,Hmax , a,b,alpha,brem)
+    if (abs(Hmax) < epsilon(1.0d0) ) then
+      Bdown = 0.0d0
+      dBdowndH = 0.0d0
+    else
+
+      A2 = (sin(alpha)/a)**2.0d0 + (cos(alpha)/b)**2.0d0
+      C = 2.0d0*cos(alpha)*sin(alpha)*(1.0d0/(a**2.0d0) - 1.0d0/(b**2.0d0))*(H)
+      D = ((cos(alpha)/a)**2.0d0 + (sin(alpha)/b)**2.0d0)*(H**2.0d0) - 1.0d0
+      discr = C**2.0d0 - 4.0d0*A2*D
+      Bdown = (-C + sqrt(discr))/(2.0d0*A2)
+
+      num = ((H*cos(alpha)+Bdown*sin(alpha))*cos(alpha))/a**2.0d0 + ((H*sin(alpha)-Bdown*cos(alpha))*sin(alpha))/b**2.0d0
+      denom = (-(H*cos(alpha)+Bdown*sin(alpha))*sin(alpha))/a**2.0d0 + ((H*sin(alpha)-Bdown*cos(alpha))*cos(alpha))/b**2.0d0
+      dBdowndH = num/denom
+
+    end if
+
+ 
+
+    
+
+    return
+  end subroutine CalculdBdowndH
+
+  subroutine CalculdBdowndHmax1 (Hmax,H,bh, dBdowndHmax)
+    ! Description :
+    ! Calcul des fonction F(H) et G(H) pour le modele de Preisach. Recuperation de l'induction a remanence.
+    implicit none
+    ! Inputs :
+    ! Parametres de la courbe BH
+    double precision, dimension(maxParam), intent(in)       :: bh
+    ! Champ mag
+    double precision, intent(in)                            :: H
+    double precision, intent(in)                            :: Hmax
+    ! Outputs :
+    ! Valeur de la fonction B down et sa derivee
+    double precision, intent(out)                           :: dBdowndHmax
+      
+    ! Variables :
+    double precision                                        :: a, b, alpha, Bdown, discr, brem
+    double precision                                        :: num, denom, A2, C, D
+    ! Recuperation des parametres
+
+
+    call GetEllipseParameters (bh,Hmax , a,b,alpha,brem)
+
+
+    if (abs(Hmax) < epsilon(1.0d0) ) then
+      Bdown = 0.0d0
+      dBdowndHmax = 0.0d0
+    else
+      A2 = (sin(alpha)/a)**2.0d0 + (cos(alpha)/b)**2.0d0
+      C = 2.0d0*cos(alpha)*sin(alpha)*(1.0d0/(a**2.0d0) - 1.0d0/(b**2.0d0))*(H)
+      D = ((cos(alpha)/a)**2.0d0 + (sin(alpha)/b)**2.0d0)*(H**2.0d0) - 1.0d0
+      discr = C**2.0d0 - 4.0d0*A2*D
+      Bdown = (-C + sqrt(discr))/(2.0d0*A2)
+
+      num = ((H*sin(alpha)-Bdown*cos(alpha))**2.0d0)/(Hmax*b**2.0d0) + ((H*cos(alpha)+Bdown*sin(alpha))**2.0d0)/(Hmax*a**2.0d0)
+      denom = ((H*cos(alpha)+Bdown*sin(alpha))*sin(alpha))/(a**2.0d0) - ((H*sin(alpha)-Bdown*cos(alpha))*cos(alpha))/(b**2.0d0)
+      dBdowndHmax = num/denom
+    end if
+ 
+
+
+    return
+  end subroutine CalculdBdowndHmax1
+
+  subroutine CalculdBdowndHmax2 (Hmax,bh, dBdowndHmax)
+    ! Description :
+    ! Calcul des fonction F(H) et G(H) pour le modele de Preisach. Recuperation de l'induction a remanence.
+    implicit none
+    ! Inputs :
+    ! Parametres de la courbe BH
+    double precision, dimension(maxParam), intent(in)       :: bh
+    ! Champ mag
+    double precision, intent(in)                            :: Hmax
+    ! Outputs :
+    ! Valeur de la fonction B down et sa derivee
+    double precision, intent(out)                           :: dBdowndHmax
+      
+    ! Variables :
+    double precision                                        :: a, b, alpha, Bdown, discr, brem
+    double precision                                        :: num, denom, A2, C, D
+    ! Recuperation des parametres
+
+
+    call GetEllipseParameters (bh,Hmax , a,b,alpha,brem)
+
+
+    if (abs(Hmax) < epsilon(1.0d0) ) then
+      Bdown = 0.0d0
+      dBdowndHmax = 0.0d0
+    else
+      A2 = (sin(alpha)/a)**2.0d0 + (cos(alpha)/b)**2.0d0
+      C = 2.0d0*cos(alpha)*sin(alpha)*(1.0d0/(a**2.0d0) - 1.0d0/(b**2.0d0))*(Hmax)
+      D = ((cos(alpha)/a)**2.0d0 + (sin(alpha)/b)**2.0d0)*(Hmax**2.0d0) - 1.0d0
+      discr = C**2.0d0 - 4.0d0*A2*D
+      Bdown = (-C + sqrt(discr))/(2.0d0*A2)
+
+      num = ((Hmax*sin(alpha)-Bdown*cos(alpha))**2.0d0)/(Hmax*b**2.0d0) + &
+      ((Hmax*cos(alpha)+Bdown*sin(alpha))**2.0d0)/(Hmax*a**2.0d0)- &
+      (Hmax*cos(alpha)+Bdown*sin(alpha))*cos(alpha)/a**2.0d0 - (Hmax*sin(alpha)-Bdown*cos(alpha))*sin(alpha)/b**2.0d0
+
+      denom = ((Hmax*cos(alpha)+Bdown*sin(alpha))*sin(alpha))/(a**2.0d0) - &
+      ((Hmax*sin(alpha)-Bdown*cos(alpha))*cos(alpha))/(b**2.0d0)
+      dBdowndHmax = num/denom
+    end if
+ 
+
+
+    return
+  end subroutine CalculdBdowndHmax2
+
+
+  subroutine CalculFG4param (bh,H , brem,F,dFdH,G,dGdH)
+    ! Description :
+    ! Calcul des fonction F(H) et G(H) pour le modele de Preisach. Recuperation de l'induction a remanence.
+    implicit none
+    ! Inputs :
+    ! Parametres de la courbe BH
+    double precision, dimension(maxParam), intent(in)       :: bh
+    ! Champ mag
+    double precision, intent(in)                            :: H
+    ! Outputs :
+    ! Induction a remanence
+    double precision, intent(out)                           :: brem
+    ! Valeur de la fonction F et sa derivee
+    double precision, intent(out)                           :: F, dFdH
+    ! Valeur de la fonction G et sa derivee
+    double precision, intent(out)                           :: G, dGdH
+      
+    ! Variables :
+    integer                                                 :: i, natan
+    double precision, dimension(maxAtan)                    :: ai, bi, ci
+    double precision                                        :: muFmax, bsat
+    double precision                                        :: xia, xid
+    
+    
+    brem = bh(2)
+    muFmax = bh(8)*mu0
+
+    ! Cas H = 0
+    if ( abs(H) < epsilon(1.0d0) ) then
+      F = 0.0d0
+      dFdH = muFmax
+      G = 0.0d0
+      dGdH = 0.0d0
+      
+    ! Cas H < 0
+    else if ( H < 0.0d0 ) then
+      
+      F = -(bh(3)-brem)*(-H/bh(7))*(1.0d0+(-H/bh(7))**(bh(5)+1.0d0))**(-1.0d0/(bh(5)+1.0d0))
+      dFdH = ((bh(3)-brem)*(1.0d0+(-H/bh(7))**(bh(5)+1.0d0))**(-1.0d0/(bh(5)+1.0d0)))/(-H*(-H/bh(7))**(bh(5))+bh(7))
+      G = -brem+brem*(1.0d0+(-H/bh(6))**(bh(5)+2.0d0))**(-1.0d0)
+      dGdH = (brem*(bh(5)+2.0d0)*(-H)*(-H/bh(6))**(bh(5)))/((bh(6)**2.0d0)*(1.0d0+(-H/bh(6))**(bh(5)+2.0d0))**2.0d0)
+
+      
+    ! Cas H > 0
+    else
+      
+      F = (bh(3)-brem)*(H/bh(7))*(1.0d0+(H/bh(7))**(bh(5)+1.0d0))**(-1.0d0/(bh(5)+1.0d0))
+      dFdH = ((bh(3)-brem)*(1.0d0+(H/bh(7))**(bh(5)+1.0d0))**(-1.0d0/(bh(5)+1.0d0)))/(H*(H/bh(7))**(bh(5))+bh(7))
+      G = brem-brem*(1.0d0+(H/bh(6))**(bh(5)+2.0d0))**(-1.0d0)
+      dGdH = (brem*(bh(5)+2.0d0)*H*(H/bh(6))**(bh(5)))/((bh(6)**2.0d0)*(1.0d0+(H/bh(6))**(bh(5)+2.0d0))**2.0d0)
+        
+    end if
+      
+    return
+  end subroutine CalculFG4param
+end module

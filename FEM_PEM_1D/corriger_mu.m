@@ -22,8 +22,6 @@ mu0 = 4*pi*1E-7;
 mu_im_out = mu_im_in;
 global param_phy
 
-
-%% Cas lineaire
 if param_phy.mattype == 1
     
     number_removed = sum(P < 0.025*max(P));
@@ -44,9 +42,7 @@ if param_phy.mattype == 1
     syms x
     fct=@(x) coeff(1)*x.^3+coeff(2)*x.^2+mu_H0;
     mu_real_out = [mu_real_new;fct(H_removed)];
-
     
-%% Cas anhyst arctan
 elseif param_phy.mattype == 2
     
     number_removed = sum(P < 0.025*max(P));
@@ -68,9 +64,7 @@ elseif param_phy.mattype == 2
     syms x
     fct=@(x) coeff(1)*x.^3+coeff(2)*x.^2+mu_H0;
     mu_real_out = [mu_real_new;fct(H_removed)];
-
     
-%% Cas hyst 3n param
 elseif param_phy.mattype == 3
     
     if max(H) > param_phy.ci
@@ -153,6 +147,63 @@ elseif param_phy.mattype == 6
     syms x
     fct=@(x) coeff(1)*x.^3+coeff(2)*x.^2+mu_H0;
     mu_im_out = [mu_im_new;fct(H_removed)];
+    
+elseif param_phy.mattype == 7
+    
+    if max(H) > param_phy.Hc
+        number_removed = sum(H < param_phy.Hc);
+    else
+        number_removed = 0;
+    end
+    
+    mu_real_new = mu_real_in(1:end-number_removed);
+    
+   
+    
+    [val,loc] = max(mu_real_new);
+    number_removed = sum(H < H(loc));
+   
+    
+    mu_real_new = mu_real_in(1:end-number_removed);
+    H_new = H(1:end-number_removed);
+    H_removed = [H(end-number_removed+1:end)];
+    
+    y1  = mu_real_new(end);
+    x2 = H_new(end);
+    y2 = mu_real_new(end);
+    dy2 = 0;
+   
+    mat = [3*x2^2,2*x2;x2^3,x2^2];
+    b = [dy2;y2-y1];
+    coeff = mat\b;
+    
+    syms x
+    fct=@(x) coeff(1)*x.^3+coeff(2)*x.^2+y1;
+    mu_real_out = [mu_real_new;fct(H_removed)];
+    mu_real_out = smooth(H,mu_real_out);
+    
+    %On recommence apres le lissage pour prendre le maximum local associe
+    %au plus grand H
+    [pks,locs] = findpeaks(mu_real_out);
+    [maxloc, index] = min(locs);
+    number_removed = sum(H < H(maxloc));
+    
+    mu_real_new = mu_real_out(1:end-number_removed);
+    H_new = H(1:end-number_removed);
+    H_removed = [H(end-number_removed+1:end)];
+    
+    y1  = mu_real_new(end);
+    x2 = H_new(end);
+    y2 = mu_real_new(end);
+    dy2 = 0;
+   
+    mat = [3*x2^2,2*x2;x2^3,x2^2];
+    b = [dy2;y2-y1];
+    coeff = mat\b;
+    
+    syms x
+    fct=@(x) coeff(1)*x.^3+coeff(2)*x.^2+y1;
+    mu_real_out = [mu_real_new;fct(H_removed)];
 end
 
 
