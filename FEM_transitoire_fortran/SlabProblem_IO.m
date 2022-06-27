@@ -1,4 +1,4 @@
-function [] = SlabProblem_IO(freq, L, rho, H0_list, mattype, currentFolder, output)
+function [] = slabProblem_IO(freq, L, rho, H0_list, mattype, currentFolder, output)
 
 % -------------------------------------------------------------------------
 % Programme matlab qui lance le calcul elements finis en fortran pour la
@@ -74,7 +74,8 @@ for H0 = H0_list
         elseif mattype == 6
             mu_real = param_phy.mu_real_list(k);
             mu_imag = param_phy.mu_imag_list(k);
-            
+        
+        % 7: Modele Preisach a 4 parametres
         elseif mattype == 7
             Br = param_phy.Br_list(k);
             Bsat = param_phy.Bsat_list(k);
@@ -237,21 +238,21 @@ for H0 = H0_list
         Ph_x = mean(Ph.').';
         
         if mattype == 1
-            nomFich = ['PertesLinear_' num2str(L*1E3) 'mm_' num2str(param_phy.Temp_list(k)) 'deg.txt'];
+            nomFich = ['PertesLinear_' num2str(L*1E3) 'mm_' num2str(param_phy.Temp_list(k)) 'deg_' num2str(freq/1e3) 'kHz.txt'];
         elseif  mattype == 2
-            nomFich = ['PertesFoucault_' num2str(L*1E3) 'mm_' num2str(param_phy.Temp_list(k)) 'deg.txt'];
+            nomFich = ['PertesFoucault_' num2str(L*1E3) 'mm_' num2str(param_phy.Temp_list(k)) 'deg_' num2str(freq/1e3) 'kHz.txt'];
         elseif mattype == 3
-            nomFich = ['PertesHysteresis_' num2str(L*1E3) 'mm_' num2str(param_phy.Temp_list(k)) 'deg.txt'];
+            nomFich = ['PertesHysteresis_' num2str(L*1E3) 'mm_' num2str(param_phy.Temp_list(k)) 'deg_' num2str(freq/1e3) 'kHz.txt'];
         elseif mattype == 4
             nomFich = ['PertesLimites_' num2str(L*1E3) 'mm.txt'];
         elseif mattype == 5
-            nomFich = ['PertesEllipse_' num2str(L*1E3) 'mm_' num2str(param_phy.Temp_list(k)) 'deg.txt'];
+            nomFich = ['PertesEllipse_' num2str(L*1E3) 'mm_' num2str(param_phy.Temp_list(k)) 'deg_' num2str(freq/1e3) 'kHz.txt'];
             
         elseif mattype == 6
-            nomFich = ['PertesEllipse2_' num2str(L*1E3) 'mm_' num2str(param_phy.Temp_list(k)) 'deg.txt'];
+            nomFich = ['PertesEllipse2_' num2str(L*1E3) 'mm_' num2str(param_phy.Temp_list(k)) 'deg_' num2str(freq/1e3) 'kHz.txt'];
             
         elseif mattype == 7
-            nomFich = ['PertesHysteresis2_' num2str(L*1E3) 'mm_' num2str(param_phy.Temp_list(k)) 'deg.txt'];
+            nomFich = ['PertesHysteresis2_' num2str(L*1E3) 'mm_' num2str(param_phy.Temp_list(k)) 'deg_' num2str(freq/1e3) 'kHz.txt'];
         end
         nomFich = ['H0 ' num2str(hamp1) '_' nomFich];
         dlmwrite([currentFolder output 'Resultats_transitoire_fortran\' nomFich], [x Pj_x Ph_x], '\t')

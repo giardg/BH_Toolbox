@@ -1,4 +1,4 @@
-function [] = PowerEquivalentModel(freq, L, rho, H0_list, mattype, currentFolder, output)
+function [] = powerEquivalentModel(freq, L, rho, H0_list, mattype, currentFolder, output)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % PowerEquivalentModel.m
@@ -7,8 +7,8 @@ function [] = PowerEquivalentModel(freq, L, rho, H0_list, mattype, currentFolder
 % donnees de puissance
 %
 % Etapes: 1) Resolution de P = (rho/2)*[H*H'' + (H')^2] dans fem_1D.m
-%         2) Resolution de phi' = -(1/H)*sqrt((2/rho)*P_Joule - (H')^2)
-%            dans resoud_phi.m
+%         2) Calcul de phi' = -(1/H)*sqrt((2/rho)*P_Joule - (H')^2) et
+%            calcul numerique de phi''
 %         3) Calcul de mu' et mu''
 %
 % Juillet 2020
@@ -24,7 +24,7 @@ param_num.nbIter        = 50; %nombre d'iterations maximal de la methode (Newton
 param_num.critere       = 1e-4; %critere d'arret de la methode (Newton) |delta|/|Hk|
 param_num.deg           = 2; %degre des fonctions de base (Lagrange degre 1, 2 et 3 implementes)
 param_num.nquad         = 4; %nombre de quadrature de Gauss
-param_num.phi0          = 0; %phase en x = 0
+param_num.phi0          = pi/2; %phase en x = 0
 param_num.sparsity      = false;
 param_num.amortissement = .1; %facteur d'amortissement (convergence plus lente, mais plus stable: default = 1)
 param_num.correction    = true; %Appliquer la correction sur mu (lissage et correction a faible champ)
@@ -38,6 +38,9 @@ param_phy.rho           = rho;
 param_phy.mattype       = mattype; 
 param_phy.longueur      = L; %longueur du domaine
 param_phy.omega         = 2*pi*freq; %frequence
+
+delta_H0 = []; %Longueur de penetration pour chaque H0;
+mu_eff = []; %permeabilite efficace liee a la longueur de penetration
 
 %Boucle sur les H0
 for H0 = H0_list
@@ -60,14 +63,14 @@ for H0 = H0_list
         elseif param_phy.mattype == 2
             typename = 'Foucault';
             param_phy.murmax  = param_phy.murmax_list(i);
-            param_phy.Bsat = param_phy.Bsat_list(i);
+            param_phy.Bsat = param_phy.bsat_list(i);
             
             % 3 : non lineaire hysteretique modele de Preisach a 3n coefficients
             %     B+ = Sum ai*atan((H+ci)/bi)
             %     B- = Sum ai*atan((H-ci)/bi)
         elseif param_phy.mattype == 3
             typename = 'Hysteresis';
-            param_phy.natan   = param_phy.natan(i);
+            param_phy.natan   = param_phy.natan_list(i);
             param_phy.ai = param_phy.ai_list(i);
             param_phy.bi = param_phy.bi_list(i);
             param_phy.ci = param_phy.ci_list(i);
@@ -107,7 +110,7 @@ for H0 = H0_list
         
         
         % Aller chercher dans les fichiers (FEM_transitoire_fortran)
-        [xvec_init, P_Joule, P_Hyst] = read_puissance(currentFolder, output);
+        [xvec_init, P_Joule, P_Hyst] = readPuissance(freq, currentFolder, output);
         P_exp = P_Joule+P_Hyst;
         
         % Approximation initiale de la solution (doit respecter les CF)
@@ -124,33 +127,59 @@ for H0 = H0_list
         %% Probleme elements finis pour obtenir H (Etape 1)
         
         % Resolution du probleme elements finis
-        [H, dH, ddH, xvec] = fem_1D( CF, xvec_init, Hk, dHk, P_exp );
+        [H, dH, ddH, xvec] = fem1D( CF, xvec_init, Hk, dHk, P_exp );
         P = (param_phy.rho/2)*((H).*ddH+dH.^2);
         
-        %% Resolution de l'equation en phi (Etape 2)
-        [phi, dphi, ddphi] = resoud_phi(xvec, H, dH, xvec_init, P_Joule);
+        %% Calcul de l'equation en phi (Etape 2)
+        dphi = (-1./H).*sqrt((2/param_phy.rho)*spline(xvec_init,P_Joule,xvec)-dH.^2);
+        ddphi = diffO2(xvec,dphi);
         
         %% Trouver mu' et mu'' (Etape 3)
         mu_real = (1/mu0)*(param_phy.rho/param_phy.omega)*((2./H).*dH.*dphi+ddphi);
         mu_im = (1/mu0)*(-2*spline(xvec_init,P_Hyst,xvec)/param_phy.omega)./(H.^2);
-        if (param_num.correction) [mu_real,mu_im] = corriger_mu(mu_real, mu_im, H, P); end %Correction de mu à faible champ
+        if (param_num.correction) [mu_real,mu_im] = corrigerMu(mu_real, mu_im, H, P); end %Correction de mu à faible champ
         mu = mu0*(mu_real+1i*mu_im);
         
         %% Verification (FoucaultSolve.m)
         PQ = struct('rho',param_phy.rho,'omega',param_phy.omega,'x',xvec,'dx',xvec(2)-xvec(1),'nx',length(xvec),'Hmax', param_phy.H0);
-        H2 = FoucaultSolve( PQ, transpose(mu) );
-        [Ptot_approx,Pjoule_approx,Physt_approx] = PowerLosses(PQ,H2,mu);
-        
+        H2 = foucaultSolve( PQ, transpose(mu) );
+        [Ptot_approx,Pjoule_approx,Physt_approx,delta] = powerLosses(PQ,H2,mu);
+        delta_H0 = [delta_H0,delta];
+        mu_eff = [mu_eff, 2*rho/(param_phy.omega*delta^2*mu0)];
         
         %% Affichage des resultats
-        afficher_resultats(xvec_init, P_Joule, P_Hyst, Hk, xvec, H, ...
-            dH, ddH, P_exp, P, phi, mu_real, mu_im, ...
+        afficherResultats(xvec_init, P_Joule, P_Hyst, Hk, xvec, H, ...
+            dH, ddH, P_exp, P, mu_real, mu_im, ...
             Pjoule_approx, Physt_approx, Ptot_approx)
         
         %% Enregistrer les resultats
-        filename = strcat('H0',{' '},string(param_phy.H0),'_mu',typename,'_',string(param_phy.longueur*1e3),'mm_',num2str(param_phy.Temp),'deg');
+        filename = strcat('H0',{' '},string(param_phy.H0),'_mu',typename,'_',num2str(param_phy.Temp),'deg_',num2str(freq/1e3),'kHz');
         if param_num.correction filename = strcat(filename,'_corrected'); end
         filename = strcat(filename,'.txt');
         dlmwrite(strcat(currentFolder, output, 'Resultats_mu\', filename), [H mu_real mu_im], '\t');
     end
 end
+
+% figure
+% x0=400;
+% y0=150;
+% width=800;
+% height=625;
+% set(gcf,'position',[x0,y0,width,height])
+% plot(H0_list/1e3,delta_H0*1e3,'Linewidth',2)
+% xlabel('$H_0$ (kA/m)','Interpreter','latex','Fontsize',28)
+% ylabel('$\delta$ (mm)','Interpreter','latex','Fontsize',28)
+% ax = gca;
+% ax.FontSize = 22; 
+% 
+% figure
+% x0=400;
+% y0=150;
+% width=800;
+% height=625;
+% set(gcf,'position',[x0,y0,width,height])
+% plot(H0_list/1e3,mu_eff,'Linewidth',2)
+% xlabel('$H_0$ (kA/m)','Interpreter','latex','Fontsize',28)
+% ylabel('$\mu_{reff}$ (mm)','Interpreter','latex','Fontsize',28)
+% ax = gca;
+% ax.FontSize = 22; 

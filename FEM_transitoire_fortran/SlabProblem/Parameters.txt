@@ -3,12 +3,13 @@ Duree d'un cycle (s)
 Nombre de pas de temps par cycle
 2000
 Taille du domaine de calcul (m)
-1.500000000000000e-03
+2.500000000000000e-03
 Nombre d'elements
 200
 Resistivite (Ohms/m)
 2.500000000000000e-07
 Type de courbe BH
-1
+2
 Parametres de la courbe BH
-1.000000000000000e+02
+6.000000000000000e+02
+1.800000000000000e+00

@@ -52,7 +52,7 @@ for K=1:nel %boucle sur les elements
     SK = zeros(ndk,1);
     MK = zeros(ndk,ndk);
     
-    [pts,poids] = pts_gauss1d(param_num.nquad); %points d'evaluation de l'integrale et poids
+    [pts,poids] = ptsGauss1d(param_num.nquad); %points d'evaluation de l'integrale et poids
     for k = 1:param_num.nquad 
         
         %Points et poids de gauss

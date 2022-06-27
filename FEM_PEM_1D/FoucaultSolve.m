@@ -1,4 +1,4 @@
-function H = FoucaultSolve( PQ, Mu )
+function H = foucaultSolve( PQ, Mu )
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % FoucaultSolve.m

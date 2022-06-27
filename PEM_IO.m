@@ -7,10 +7,10 @@ currentFolder = pwd;
 
 %% Input parameters
 freq          = 10e3;                                  %Hz
-L             = 1.5e-3;                                %m
-rho           = 2.5e-7;                                %Ohm/m
-H0_list       = [10,100]*1e3;                          %A/m
-mattype       = 1;                                     %1-7
+L             = 2.5e-3;                                %m (adapter L pour avoir un domaine assez long p/r a penetration)
+rho           = 2.5e-7;                                %Ohm/m (tres peu d'influence sur les courbes equivalentes)
+H0_list       = [1:4,5:5:100]*1e3;                         %A/m
+mattype       = 2;                                     %1-7
 output        = '\Results\';                           %Output folder
 
 global param_phy
@@ -34,9 +34,9 @@ elseif mattype == 2
 %     B- = Sum ai*atan((H-ci)/bi)
 elseif mattype == 3
     param_phy.natan_list   = [1];
-    param_phy.ai_list = [3.8/pi];
-    param_phy.ci_list = [1.25e3];
-    param_phy.bi_list = ci_list./(tan(0.94./ai));
+    param_phy.ai_list = [3.6/pi];
+    param_phy.ci_list = [1.7e3];
+    param_phy.bi_list = param_phy.ci_list./(tan(1.4./param_phy.ai_list));
     
     param_phy.Temp_list = [25];        %celsius (informatif seulement)
     
@@ -68,21 +68,53 @@ elseif mattype == 6
     
 % 7 : non lineaire hysteretique modele de Preisach a 4 parametres
 elseif mattype == 7
-    param_phy.Br_list = [1.4];    %T
-    param_phy.Bsat_list = [1.8];  %T
-    param_phy.Hc_list = [1.25e3]; %A/m
-    param_phy.Wh_list = [1.3];
-    param_phy.mur_max_list = [1400];
+    %Reprise des donnees de Kevin
+    fig = open('AnalyseThermoMagnetique_4340ferrite.fig');
+    axObjs = fig.Children;
+    
+    %Wh
+    dataObjs =  axObjs(1).Children;
+    Temp1 = dataObjs(2).XData;
+    Whdata = dataObjs(2).YData;
+    
+    %Hc
+    dataObjs =  axObjs(2).Children;
+    Temp2 = dataObjs(2).XData;
+    Hcdata = dataObjs(2).YData;
+    
+    %Br
+    dataObjs =  axObjs(3).Children;
+    Temp3 = dataObjs(2).XData;
+    Brdata = dataObjs(2).YData;
+    
+    %Bsat
+    dataObjs =  axObjs(4).Children;
+    Temp4 = dataObjs(2).XData;
+    Bsatdata = dataObjs(2).YData;
+    
+    %murmax
+    dataObjs =  axObjs(5).Children;
+    Temp5 = dataObjs(2).XData;
+    murmaxdata = dataObjs(2).YData;
+    
+    minlen = min([length(Temp1),length(Temp2),length(Temp3),length(Temp4),length(Temp5)]);
+
+    param_phy.Br_list = Brdata(1:minlen);    %T
+    param_phy.Bsat_list = Bsatdata(1:minlen);  %T
+    param_phy.Hc_list = Hcdata(1:minlen); %A/m
+    param_phy.Wh_list = Whdata(1:minlen);
+    param_phy.mur_max_list = murmaxdata(1:minlen);
     param_phy.a_list = zeros(size(param_phy.Br_list));
     param_phy.s_list = zeros(size(param_phy.Br_list));
     param_phy.b_list = zeros(size(param_phy.Br_list));
     
+    %Optimisation des parametres a, b et s
     for i = 1:length(param_phy.Br_list)
         densite = 7850;
         Br = param_phy.Br_list(i);
         Bsat = param_phy.Bsat_list(i);
-        Hc = param_phy.Hc_list(i);
-        Wh = param_phy.Wh_list(i);
+        Hc = param_phy.Hc_list(i)*1000;
+        Wh = param_phy.Wh_list(i)*1000/densite;
         mur_max = param_phy.mur_max_list(i);
         
         b = @(x) x(1).*(x(2)+sqrt((x(4)-x(3))./x(3)));
@@ -115,7 +147,7 @@ elseif mattype == 7
         param_phy.Hc_list(i) = x(5);
         
     end
-    param_phy.Temp_list = [25];        %celsius (informatif seulement)
+    param_phy.Temp_list = Temp1(1)%:minlen);        %celsius (informatif seulement)
     
 else
     error('Le type de materiau choisi n''est pas implemente.')
@@ -124,7 +156,7 @@ end
 addpath('FEM_transitoire_fortran', 'FEM_PEM_1D')
 
 %% 1-D Transient losses
-SlabProblem_IO(freq, L, rho, H0_list, mattype, currentFolder, output);
+slabProblem_IO(freq, L, rho, H0_list, mattype, currentFolder, output);
 
 %% PEM
-PowerEquivalentModel(freq, L, rho, H0_list, mattype, currentFolder, output);
+powerEquivalentModel(freq, L, rho, H0_list, mattype, currentFolder, output);
