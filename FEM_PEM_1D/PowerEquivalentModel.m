@@ -1,73 +1,69 @@
 function [] = powerEquivalentModel(freq, L, rho, H0_list, mattype, currentFolder, output)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% PowerEquivalentModel.m
+% powerEquivalentModel.m
 %
-% Script principal pour resoudre le PEM en 1D et determiner mu a partir de
-% donnees de puissance
+% Main function to solve the Power-Equivalent Model in 1-D and determine mu
+% from power data
 %
-% Etapes: 1) Resolution de P = (rho/2)*[H*H'' + (H')^2] dans fem_1D.m
-%         2) Calcul de phi' = -(1/H)*sqrt((2/rho)*P_Joule - (H')^2) et
-%            calcul numerique de phi''
-%         3) Calcul de mu' et mu''
+% Steps:  1) Solve P = (rho/2)*[H*H'' + (H')^2] in fem_1D.m
+%         2) Compute phi' = -(1/H)*sqrt((2/rho)*P_Joule - (H')^2) and phi''
+%         3) Compute de mu_real and mu_imag
 %
-% Juillet 2020
+% July 2020
 % Gregory Giard, Polytechnique Montreal
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-%% Parametres numeriques
+%% Numerical parameters
 global param_num
 
-param_num.nel           = 200; %nombre d'elements
-param_num.nbIter        = 50; %nombre d'iterations maximal de la methode (Newton)
-param_num.critere       = 1e-4; %critere d'arret de la methode (Newton) |delta|/|Hk|
-param_num.deg           = 2; %degre des fonctions de base (Lagrange degre 1, 2 et 3 implementes)
-param_num.nquad         = 4; %nombre de quadrature de Gauss
-param_num.phi0          = pi/2; %phase en x = 0
+param_num.nel           = 200; %number of elements
+param_num.nbIter        = 50; %maximum number of iteration (Newton)
+param_num.critere       = 1e-4; %stop criteria (Newton) |delta|/|Hk|
+param_num.deg           = 2; %Basis functions order (Lagrange degre 1, 2 et 3 implemented)
+param_num.nquad         = 4; %Number of Gauss points
+param_num.phi0          = pi/2; %phase at x = 0
 param_num.sparsity      = false;
-param_num.amortissement = .1; %facteur d'amortissement (convergence plus lente, mais plus stable: default = 1)
-param_num.correction    = true; %Appliquer la correction sur mu (lissage et correction a faible champ)
-CF                      = [1,2]; %Conditions frontieres pour les deux bords (1 = Dirichlet, 2 = Neumann)
+param_num.amortissement = .1; %damping factor (slower but steady convergence: default = 1)
+param_num.correction    = true; %Apply correction on mu (correction and smoothing for low fields)
+CF                      = [1,2]; %Boundary conditions on both edge (1 = Dirichlet, 2 = Neumann)
 
 
-%% Parametres physiques
+%% Physical parameters
 mu0 = 4*pi*1E-7;
 global param_phy
 param_phy.rho           = rho;
 param_phy.mattype       = mattype; 
-param_phy.longueur      = L; %longueur du domaine
-param_phy.omega         = 2*pi*freq; %frequence
+param_phy.longueur      = L; %domain length
+param_phy.omega         = 2*pi*freq; %frequency
 
-delta_H0 = []; %Longueur de penetration pour chaque H0;
-mu_eff = []; %permeabilite efficace liee a la longueur de penetration
-
-%Boucle sur les H0
+%Loop over H0
 for H0 = H0_list
     param_phy.H0 = H0;
     
-    %Boucle sur les temperatures (mesures magnetiques)
+    %Loop over the temperatures (magntetic measurments)
     for i = 1:length(param_phy.Temp_list)
         
         close all
         param_phy.Temp = param_phy.Temp_list(i);
         
-        % 1 : lineaire permeabilite relative constante
+        % 1 : constant relative permeability
         %     B = mu0*mur*H
         if param_phy.mattype == 1
             typename = 'Linear';
             param_phy.mur     = param_phy.mur_list(i);
             
-            % 2 : non lineaire modele arctangente
-            %     B = mu0*H + 2*bsat/pi*atan(0.5*pi*mu0*(murmax-1)/bsat*H)
+        % 2 : non-linear atan model
+        %     B = mu0*H + 2*bsat/pi*atan(0.5*pi*mu0*(murmax-1)/bsat*H)
         elseif param_phy.mattype == 2
             typename = 'Foucault';
             param_phy.murmax  = param_phy.murmax_list(i);
             param_phy.Bsat = param_phy.bsat_list(i);
             
-            % 3 : non lineaire hysteretique modele de Preisach a 3n coefficients
-            %     B+ = Sum ai*atan((H+ci)/bi)
-            %     B- = Sum ai*atan((H-ci)/bi)
+        % 3 : Preisach 3n coefficients non linear hysteretic model
+        %     B+ = Sum ai*atan((H+ci)/bi)
+        %     B- = Sum ai*atan((H-ci)/bi)
         elseif param_phy.mattype == 3
             typename = 'Hysteresis';
             param_phy.natan   = param_phy.natan_list(i);
@@ -75,45 +71,49 @@ for H0 = H0_list
             param_phy.bi = param_phy.bi_list(i);
             param_phy.ci = param_phy.ci_list(i);
             
-            % 4 : Cas limite a fort champ (on veut Hsat le plus petit possible, qui permet la convergence)
-            %     B = mu0*H+Bsat si H > Hsat
-            %     B = mu0*H-Bsat si H < Hsat
-            %     polynome de degre 3 qui assure la continuité de B et de dBdH
+        % 4 : High field limit case (not used very much)
+        %     B = mu0*H+Bsat if H > Hsat
+        %     B = mu0*H-Bsat if H < -Hsat
+        %     3rd order polynomial between -Hsat and Hsat
         elseif param_phy.mattype == 4
             typename = 'Limites';
             param_phy.Bsat = param_phy.Bsat_list(i);
             param_phy.Hsat = param_phy.Hsat_list(i);
             
-            % 5 : Modele EFG avec cycle majeur elliptique
+        % 5: Preisach Model defining F and G functions from an elliptic major cycle
+        %    defined with a constant complex permeability value (not used very much)
         elseif param_phy.mattype == 5
             typename = 'Ellipse';
             param_phy.mur_real     = param_phy.mur_real_list(i);
             param_phy.mur_im       = param_phy.mur_im_list(i);
-            
+        
+        % 6: Preisach Model with elliptic hysteretic curves (minor and major, 
+        %    not optimal...)
         elseif param_phy.mattype == 6
             typename = 'Ellipse2';
             param_phy.mur_real     = param_phy.mur_real_list(i);
             param_phy.mur_im       = param_phy.mur_im_list(i);
-            
+        
+        % 7 : Preisach 4 parameters non linear hysteretic model
         elseif param_phy.mattype == 7
             typename = 'Hysteresis2';
             param_phy.Hc = param_phy.Hc_list(i);
             
         else
-            error('Le type de materiau choisi n''est pas implemente.')
+            error('Material type not implemented.')
         end
         
-        %% Chercher P_Joule et P_Hyst
+        %% Get P_Joule and P_Hyst
         
         %addpath('Resultats_transitoires_fortran','Resultats_transitoires_COMSOL','Fonctions_FEM','Fonctions_phi')
-        addpath([currentFolder output '\Resultats_transitoire_fortran'],[currentFolder '\FEM_PEM_1D\Fonctions_FEM'],[currentFolder '\FEM_PEM_1D\Fonctions_phi'])
+        addpath([currentFolder output '\Transient_results'],[currentFolder '\FEM_PEM_1D\Functions_FEM'],[currentFolder '\FEM_PEM_1D\Functions_phi'])
         
         
-        % Aller chercher dans les fichiers (FEM_transitoire_fortran)
-        [xvec_init, P_Joule, P_Hyst] = readPuissance(freq, currentFolder, output);
+        % Get data in files
+        [xvec_init, P_Joule, P_Hyst] = readLosses(freq, currentFolder, output);
         P_exp = P_Joule+P_Hyst;
         
-        % Approximation initiale de la solution (doit respecter les CF)
+        % Initial approximation of the solution (must respect the BC)
         syms x
         Hk=@(x) param_phy.H0+0*x;
         dHk=@(x) 0*x;
@@ -124,62 +124,36 @@ for H0 = H0_list
         ddHk = ddHk(xvec_init);
         
         
-        %% Probleme elements finis pour obtenir H (Etape 1)
+        %% Finite element problem to obtain H (Step 1)
         
-        % Resolution du probleme elements finis
+        % Solving the finite element problem
         [H, dH, ddH, xvec] = fem1D( CF, xvec_init, Hk, dHk, P_exp );
         P = (param_phy.rho/2)*((H).*ddH+dH.^2);
         
-        %% Calcul de l'equation en phi (Etape 2)
+        %% Compute the phi equation (Step 2)
         dphi = (-1./H).*sqrt((2/param_phy.rho)*spline(xvec_init,P_Joule,xvec)-dH.^2);
         ddphi = diffO2(xvec,dphi);
         
-        %% Trouver mu' et mu'' (Etape 3)
+        %% Compute mu' and mu'' (Step 3)
         mu_real = (1/mu0)*(param_phy.rho/param_phy.omega)*((2./H).*dH.*dphi+ddphi);
         mu_im = (1/mu0)*(-2*spline(xvec_init,P_Hyst,xvec)/param_phy.omega)./(H.^2);
-        if (param_num.correction) [mu_real,mu_im] = corrigerMu(mu_real, mu_im, H, P); end %Correction de mu à faible champ
+        if (param_num.correction) [mu_real,mu_im] = correctMu(mu_real, mu_im, H, P); end %Correction de mu à faible champ
         mu = mu0*(mu_real+1i*mu_im);
         
         %% Verification (FoucaultSolve.m)
         PQ = struct('rho',param_phy.rho,'omega',param_phy.omega,'x',xvec,'dx',xvec(2)-xvec(1),'nx',length(xvec),'Hmax', param_phy.H0);
         H2 = foucaultSolve( PQ, transpose(mu) );
-        [Ptot_approx,Pjoule_approx,Physt_approx,delta] = powerLosses(PQ,H2,mu);
-        delta_H0 = [delta_H0,delta];
-        mu_eff = [mu_eff, 2*rho/(param_phy.omega*delta^2*mu0)];
+        [Ptot_approx,Pjoule_approx,Physt_approx] = powerLosses(PQ,H2,mu);
         
-        %% Affichage des resultats
-        afficherResultats(xvec_init, P_Joule, P_Hyst, Hk, xvec, H, ...
+        %% Display results
+        displayResults(xvec_init, P_Joule, P_Hyst, Hk, xvec, H, ...
             dH, ddH, P_exp, P, mu_real, mu_im, ...
             Pjoule_approx, Physt_approx, Ptot_approx)
         
-        %% Enregistrer les resultats
+        %% Save results
         filename = strcat('H0',{' '},string(param_phy.H0),'_mu',typename,'_',num2str(param_phy.Temp),'deg_',num2str(freq/1e3),'kHz');
         if param_num.correction filename = strcat(filename,'_corrected'); end
         filename = strcat(filename,'.txt');
-        dlmwrite(strcat(currentFolder, output, 'Resultats_mu\', filename), [H mu_real mu_im], '\t');
+        dlmwrite(strcat(currentFolder, output, 'Mu_results\', filename), [H mu_real mu_im], '\t');
     end
 end
-
-% figure
-% x0=400;
-% y0=150;
-% width=800;
-% height=625;
-% set(gcf,'position',[x0,y0,width,height])
-% plot(H0_list/1e3,delta_H0*1e3,'Linewidth',2)
-% xlabel('$H_0$ (kA/m)','Interpreter','latex','Fontsize',28)
-% ylabel('$\delta$ (mm)','Interpreter','latex','Fontsize',28)
-% ax = gca;
-% ax.FontSize = 22; 
-% 
-% figure
-% x0=400;
-% y0=150;
-% width=800;
-% height=625;
-% set(gcf,'position',[x0,y0,width,height])
-% plot(H0_list/1e3,mu_eff,'Linewidth',2)
-% xlabel('$H_0$ (kA/m)','Interpreter','latex','Fontsize',28)
-% ylabel('$\mu_{reff}$ (mm)','Interpreter','latex','Fontsize',28)
-% ax = gca;
-% ax.FontSize = 22; 

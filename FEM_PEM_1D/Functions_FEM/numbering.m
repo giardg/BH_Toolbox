@@ -1,4 +1,4 @@
-function [numer, bord_ess] = numerotation( coord, bord, CF )
+function [numer, bord_ess] = numbering( coord, bord, CF )
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % numerotation

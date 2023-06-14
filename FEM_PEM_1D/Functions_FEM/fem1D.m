@@ -1,14 +1,11 @@
 function [Hk, dHk, ddHk, xvec] = fem1D( CF, xvec_init, Hk, dHk, P_init )
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% fem_1D
+% fem1D
 %
 % Applique la methode des elements finis pour resoudre l'equation de
 % puissance: P = (rho/2)*[H*H'' + (H')^2].
 %
-% *Semble bien fonctionner, mais je dois encore lire pour mieux
-% comprendre comment gerer les conditions frontieres avec l'algorithme
-% iteratif*
 %
 % Inputs: - nombre d'elements (nel), nombre d'iteration de la methode
 %           iterative (nbIter), critere d'arret (critere)
@@ -36,10 +33,10 @@ critere = param_num.critere;
 %% Maillage
 xMin = 0;
 xMax = param_phy.longueur;
-[coord, connec, bord] = maillage(xMin,xMax,nel);
+[coord, connec, bord] = mesh(xMin,xMax,nel);
 
 %% Numerotation
-[numer, bord_ess] = numerotation( coord, bord, CF );
+[numer, bord_ess] = numbering( coord, bord, CF );
 
 %% Boucle d'iterations pour la methode de Newton
 xvec = xvec_init;
@@ -71,15 +68,15 @@ while iter < nbIter && max(critere_vec) > critere
     P = spline(xvec_init,P_init,xvec);
     
     %% Assemblage des matrices globales (M,F,S)
-    [M,F,S] = assemblage(coord, connec, bord, numer, bord_ess, xvec, Hk, dHk, P);
+    [M,F,S] = assemble(coord, connec, bord, numer, bord_ess, xvec, Hk, dHk, P);
     
     %% Resolution du systeme matriciel
-    [U] = resoudSysteme( M, F, S, coord, bord_ess );
+    [U] = solveSystem( M, F, S, coord, bord_ess );
     
     %% Mise a jour de H et de sa derivee avec delta (H_{k+1} = H_k+delta)
     Hk_old = Hk;
     xvec_old = xvec;
-    [Hk, dHk, ddHk, xvec, delta, flag] = updateChamp(coord, connec, numer, xvec, Hk, U);
+    [Hk, dHk, ddHk, xvec, delta, flag] = updateField(coord, connec, numer, xvec, Hk, U);
     
     %% Update de la figure (H et delta vs x)
     set(pH1,'Ydata',Hk_old);
@@ -98,7 +95,7 @@ while iter < nbIter && max(critere_vec) > critere
 end
 
 if iter == nbIter
-    fprintf('Convergence pas atteinte, arret a %d iterations \n',nbIter);
+    fprintf('Convergence not reached, stopped at %d iterations \n',nbIter);
 else
-    fprintf('Convergence apres %d iterations \n',iter);
+    fprintf('Convergence after %d iterations \n',iter);
 end

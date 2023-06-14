@@ -11,8 +11,9 @@ height=550;
 %% Parametres
 mu0 = 4*pi*1E-7;
 Tempvec = [24.7297,113.3906,246.0131,409.2073,461.1946,506.9757,522.4292,547.1615,560.8959,584.9624,607.1725,620.1256,632.5545,645.9273,663.0356, 775]; %liste des fichiers disponible
-%Tempvec = [25];
+%Tempvec = [24.7297,113.3906];
 H0_list = [1:4,5:5:100]*1e3; %liste des fichiers disponible
+%H0_list = [5,10]*1e3; %liste des fichiers disponible
 freq = 10*1e3;
 longueur = 2.5e-3;
 correction = true;
@@ -134,5 +135,5 @@ mat_imag = unique(mat_imag,'rows');
 
 %% Figure
 
-dlmwrite(strcat('table_mu_real_temp_test.txt'), mat_real, '\t');
-dlmwrite(strcat('table_mu_imag_temp_test.txt'), mat_imag, '\t');
+dlmwrite(strcat('table_mu_real_temp.txt'), mat_real, '\t');
+dlmwrite(strcat('table_mu_imag_temp.txt'), mat_imag, '\t');

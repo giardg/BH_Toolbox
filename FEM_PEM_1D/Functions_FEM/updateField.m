@@ -1,7 +1,7 @@
-function [Hk_new, dHk_new, ddHk_new, xvec_new, delta_tot, flag] = updateChamp(coord, connec, numer, xvec, Hk, U)
+function [Hk_new, dHk_new, ddHk_new, xvec_new, delta_tot, flag] = updateField(coord, connec, numer, xvec, Hk, U)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% update_champ
+% updateField
 % 
 % Met a jour le champ et sa derivee (Hk et dHk) selon la solution du
 % probleme elements finis

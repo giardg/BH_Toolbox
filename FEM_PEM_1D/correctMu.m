@@ -1,4 +1,4 @@
-function [mu_real_out,mu_im_out] = corriger_mu(mu_real_in, mu_im_in, H, P)
+function [mu_real_out,mu_im_out] = correctMu(mu_real_in, mu_im_in, H, P)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % corriger_mu

@@ -9,7 +9,7 @@ currentFolder = pwd;
 freq          = 10e3;                                  %Hz (No influence on the permeability curves)
 L             = 2.5e-3;                                %m (adapt L to have a long enough domain with penetration depth)
 rho           = 2.5e-7;                                %Ohm/m (No influence on the permeability curves)
-H0_list       = [50,100]; %[1:4,5:5:100]*1e3;                     %A/m
+H0_list       = [1:4,5:5:100]*1e3;                     %A/m
 mattype       = 7;                                     %1-7
 output        = '\Results\';                           %Output folder
 
@@ -151,16 +151,16 @@ elseif mattype == 7
         param_phy.Hc_list(i) = x(5);
         
     end
-    param_phy.Temp_list = Temp1(1:2);%minlen);        %celsius (informative only)
+    param_phy.Temp_list = Temp1(1:minlen);        %celsius (informative only)
     
 else
     error('Material type not implemented.')
 end
 
-addpath('FEM_transitoire_fortran', 'FEM_PEM_1D')
+addpath('FEM_transient_fortran', 'FEM_PEM_1D')
 
 %% 1-D Transient losses
-SlabProblem_IO(freq, L, rho, H0_list, mattype, currentFolder, output);
+slabProblem_IO(freq, L, rho, H0_list, mattype, currentFolder, output);
 
 %% PEM
-PowerEquivalentModel(freq, L, rho, H0_list, mattype, currentFolder, output);
+powerEquivalentModel(freq, L, rho, H0_list, mattype, currentFolder, output);

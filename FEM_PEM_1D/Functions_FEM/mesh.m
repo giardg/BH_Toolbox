@@ -1,7 +1,7 @@
-function [coord, connec, bord] = maillage(xMin,xMax,nEls)
+function [coord, connec, bord] = mesh(xMin,xMax,nEls)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% maillage
+% mesh
 % 
 % Cree le maillage selon les bornes, le nombre d'elements et le degre des
 % fonctions de formes (implemente jusqu'au degre 3)

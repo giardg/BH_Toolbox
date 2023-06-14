@@ -1,4 +1,4 @@
-function [M,F,S] = assemblage(coord, connec, bord, numer, bord_ess, xvec, Hk, dHk, P)
+function [M,F,S] = assemble(coord, connec, bord, numer, bord_ess, xvec, Hk, dHk, P)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % assemblage

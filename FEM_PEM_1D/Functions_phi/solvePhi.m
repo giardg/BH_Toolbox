@@ -1,7 +1,7 @@
-function [phi, dphi, ddphi] = resoudPhi(xvec, H, dH, x_Pjoule, P_Joule)
+function [phi, dphi, ddphi] = solvePhi(xvec, H, dH, x_Pjoule, P_Joule)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% resoud_phi
+% solvePhi
 % 
 % Resolution de l'equation en phi: 
 % phi' = -(1/H)*sqrt((2/rho)*P_Joule - (H')^2)

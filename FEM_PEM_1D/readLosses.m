@@ -1,4 +1,4 @@
-function [xvec, P_Joule, P_Hyst] = readPuissance(freq, currentFolder, output)
+function [xvec, P_Joule, P_Hyst] = readLosses(freq, currentFolder, output)
 
 global param_phy
 
@@ -28,8 +28,8 @@ end
 
 filename = strcat('H0',{' '},string(H0),'_',pertesType,'_',string(longueur*1e3),'mm_',num2str(Temp),'deg_', num2str(freq/1e3), 'kHz.txt');
 
-if isfile(strcat(currentFolder, output, '\Resultats_transitoire_fortran\', filename))
-    A = load(strcat(currentFolder, output, '\Resultats_transitoire_fortran\', filename));
+if isfile(strcat(currentFolder, output, '\Transient_results\', filename))
+    A = load(strcat(currentFolder, output, '\Transient_results\', filename));
     xvec = A(:,1);
     P_Joule = A(:,2);
     P_Hyst = A(:,3);

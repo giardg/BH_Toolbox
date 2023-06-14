@@ -1,52 +1,54 @@
 function [] = slabProblem_IO(freq, L, rho, H0_list, mattype, currentFolder, output)
 
 % -------------------------------------------------------------------------
-% Programme matlab qui lance le calcul elements finis en fortran pour la
-% resolution du slab problem.
-% Ce programme gere les Inputs/Outputs via des fichiers textes
-% dans le repertoire ou se trouve l'executable du slab problem.
+% MATLAB function that lauches the FEM executable compiled with Fortran for
+% the resolution of the slab 1-D problem
+% This program handles the Inputs/Outputs from the text files in the folder
+% with the slab problem executable
 %
 % Input files
-% Parameters.txt    : Contient les parametres physiques
-% Dirichelet.txt    : Contient la condition de Dirichelet H(x=0,t)
+% Parameters.txt    : Contains the physical parameters
+% Dirichelet.txt    : Contains the Dirichelet conditions (H(x=0,t))
 %
 % Output files
-% Results.txt       : Contient H(x,t), B(x,t), J(x,t), Pj(x,t) et Ph(x,t)
+% Results.txt       : Contains H(x,t), B(x,t), J(x,t), Pj(x,t) and Ph(x,t)
 %
 % -------------------------------------------------------------------------
 
 global param_phy
 
-%Boucle sur les H0
+%Loop over H0
 for H0 = H0_list
     
     
-    %% Parametres a modifier par l'utilisateur
+    %% FEM parameters that can be modified by a user
     
-    % Path jusqu'au programme fortran et repertoire I/O
-    path =strcat(currentFolder,'\FEM_transitoire_fortran\SlabProblem\');
+    % Path to ther fortran executable and I/O folder
+    path =strcat(currentFolder,'\FEM_transient_fortran\SlabProblem\');
     
-    % Nombre d'elements
+    % Number of elements
     ne          = 200;
-    % Duree d'un cycle (s)
+    % Cycle duration (s)
     T           = 1/freq;
-    % Nombre de pas de temps par periode
+    % Number of time steps per period
     ntpc        = 2000;
     
-    %Boucle sur les temp
+    % Loop over the temperatures
     for k = 1:length(param_phy.Temp_list)
         
         
-        % 1 : lineaire permeabilite relative constante
+        % 1 : constant relative permeability
         %     B = mu0*mur*H
         if mattype == 1
             mur     = param_phy.mur_list(k);
-        % 2 : non lineaire modele arctangente
+            
+        % 2 : non-linear atan model
         %     B = mu0*H + 2*bsat/pi*atan(0.5*pi*mu0*(murmax-1)/bsat*H)
         elseif mattype == 2
             murmax  = param_phy.murmax_list(k);
             bsat    = param_phy.bsat_list(k);
-        % 3 : non lineaire hysteretique modele de Preisach a 3n coefficients
+            
+        % 3 : Preisach 3n coefficients non linear hysteretic model
         %     B+ = Sum ai*atan((H+ci)/bi)
         %     B- = Sum ai*atan((H-ci)/bi)
         elseif mattype == 3
@@ -55,27 +57,27 @@ for H0 = H0_list
             ci = param_phy.ci_list(k);
             bi = param_phy.bi_list(k);
             
-         % 4 : Cas limite a fort champ (on veut Hsat le plus petit possible, qui permet la convergence)
-         %     B = mu0*H+Bsat si H > Hsat
-         %     B = mu0*H-Bsat si H < Hsat
-         %     polynome de degre 3 qui assure la continuité de B et de dBdH sinon
+        % 4 : High field limit case (not used very much)
+        %     B = mu0*H+Bsat if H > Hsat
+        %     B = mu0*H-Bsat if H < -Hsat
+        %     3rd order polynomial between -Hsat and Hsat
         elseif mattype == 4
             Bsat = param_phy.Bsat_list(k);
             Hsat = param_phy.Hsat_list(k);
             
-        % 5: Modele Preisach en definissant les fonctions F et G a partir d'un
-        % cycle majeur en forme d'ellipse defini par la permeabilite constante
-        % complexe
+        % 5: Preisach Model defining F and G functions from an elliptic major cycle
+        %    defined with a constant complex permeability value (not used very much)
         elseif mattype == 5
             mu_real = param_phy.mu_real_list(k);
             mu_imag = param_phy.mu_imag_list(k);
             
-        % 6: Modele Preisach avec l'hysteresis elliptique (mineur et majeur, pas )
+        % 6: Preisach Model with elliptic hysteretic curves (minor and major, 
+        %    not optimal...)
         elseif mattype == 6
             mu_real = param_phy.mu_real_list(k);
             mu_imag = param_phy.mu_imag_list(k);
         
-        % 7: Modele Preisach a 4 parametres
+        % 7 : Preisach 4 parameters non linear hysteretic model
         elseif mattype == 7
             Br = param_phy.Br_list(k);
             Bsat = param_phy.Bsat_list(k);
@@ -86,36 +88,31 @@ for H0 = H0_list
             mur_max = param_phy.mur_max_list(k);
             
         else
-            error('Le type de materiau choisi n''est pas implemente.')
+            error('Material type not implemented.')
         end
         
-        % Champ magnetique applique (condition de Dirichelet) :
+        % Applied magnetic field (Dirichelet condition) :
         % Amplitude 1 (A/m)
         %hamp1       = sqrt(1/(A-(B^2)/(4*C)));
         hamp1       = H0;
         
-        % Frequence 1 (Hz)
+        % Frequency 1 (Hz)
         freq1       = 1/T;
-        % Amplitude 2 (A/m)
+        % Amplitude 2 (A/m) Only for SDF applications
         hamp2       = 0.0e+03;
-        % Frequence 2 (Hz)
+        % Frequency 2 (Hz) Only for SDF applications
         freq2       = 190.0e+03;
-        % Vecteur temps (s)
+        % Time vector (s)
         t = (0:ntpc-1)*T/ntpc;
-        % Champ magnetique applique
         
         % Sin
         H_0_t = hamp1*sin(2*pi*freq1*t) + hamp2*sin(2*pi*freq2*t);
         
-        % Square
-        % H_0_t = -hamp1*ones(size(t));
-        % H_0_t(t>=0.5*T) = hamp1;
-        
-        %% Ecriture des inputs :
-        % Ouverture du fichier Parameters.txt
+        %% Input writing :
+        % Open file Parameters.txt
         fio = fopen(strcat(path,'Parameters.txt'),'wt');
         
-        % Ecriture
+        % Writing
         fprintf(fio,'Duree d''un cycle (s)\n');
         fprintf(fio,'%1.15e\n',T);
         fprintf(fio,'Nombre de pas de temps par cycle\n');
@@ -165,42 +162,42 @@ for H0 = H0_list
             fprintf(fio,'%1.15e\n',b);
             fprintf(fio,'%1.15e\n',mur_max);
         else
-            error('Le type de materiau choisi n''est pas implemente.')
+            error('Material type not implemented.')
         end
         
-        % Fermeture du fichier
+        % Close file
         fclose(fio);
         
-        % Ouverture du fichier Dirichelet.txt
+        % Open file Dirichelet.txt
         fio = fopen(strcat(path,'Dirichelet.txt'),'wt');
         
-        % Ecriture
+        % Writing
         for n = 1:ntpc
             fprintf(fio,'%1.15e\n',H_0_t(n));
         end
         
-        % Fermeture du fichier
+        % Close file
         fclose(fio);
         
-        %% Lancement de la simulation
+        %% Launch time-transient simulation
         % system(char(strcat(path,{'SlabProblem '},path)));
         pathSys = [path '/SlabProblem/'];
         cd(pathSys)
         system('SlabProblem.exe '+string(path))
         % system('SlabProblem_tour.exe')
         
-        %% Lecture des resultats
-        % ouverture du fichier
+        %% Reading results
+        % Open files
         fio = fopen(strcat(path,'Results.txt'),'rt');
         
-        % Lecture de l'en-tete
+        % Read buffer
         fgetl(fio); fgetl(fio); fgetl(fio);
         
-        % Recuperation des dimensions
+        % Dimensions
         nt = fscanf(fio,'Nombre de pas de temps : %i\n',1);
         nx = fscanf(fio,'Nombre de points en x  : %i\n',1);
         
-        % Initialisation des vecteurs de donnes
+        % Vector initialization
         t  = zeros(1,nt);
         x  = zeros(nx,1);
         H  = zeros(nx,nt);
@@ -209,19 +206,19 @@ for H0 = H0_list
         Pj = zeros(nx,nt);
         Ph = zeros(nx,nt);
         
-        % Lecture des donnees
+        % Read data
         for n = 1:nt
             
-            % Lecture de l'en-tete du pas de temps
+            % Read time step buffer
             fgetl(fio);
             t(n) = fscanf(fio,'Time = %e\n',1);
             fgetl(fio);
             
-            % Lecture de la solution au pas de temps n
+            % Read solution at time step n
             data = fscanf(fio,'%e',[6,nx]);
             fgetl(fio); fgetl(fio);
             
-            % Copie des donnes dans les structures
+            % Copy data in structures
             x(1:nx)    = data(1,1:nx)';
             H(1:nx,n)  = data(2,1:nx)';
             B(1:nx,n)  = data(3,1:nx)';
@@ -231,7 +228,7 @@ for H0 = H0_list
             
         end
         
-        % fermeture du fichier
+        % Close files
         fclose(fio);
         
         Pj_x = mean(Pj.').';
@@ -255,7 +252,7 @@ for H0 = H0_list
             nomFich = ['PertesHysteresis2_' num2str(L*1E3) 'mm_' num2str(param_phy.Temp_list(k)) 'deg_' num2str(freq/1e3) 'kHz.txt'];
         end
         nomFich = ['H0 ' num2str(hamp1) '_' nomFich];
-        dlmwrite([currentFolder output 'Resultats_transitoire_fortran\' nomFich], [x Pj_x Ph_x], '\t')
+        dlmwrite([currentFolder output 'Transient_results\' nomFich], [x Pj_x Ph_x], '\t')
         
         delete([path 'Results.txt'])
         

@@ -1,7 +1,7 @@
-function U = resoudSysteme( M, F, S, coord, bord_ess)
+function U = solveSystem( M, F, S, coord, bord_ess)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% resoud_systeme
+% solveSystem
 % 
 % Resoud le systeme matriciel afin d'obtenir les coefficients de la
 % solution delta de la methode iterative
