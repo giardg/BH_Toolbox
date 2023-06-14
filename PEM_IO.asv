@@ -9,8 +9,8 @@ currentFolder = pwd;
 freq          = 10e3;                                  %Hz (No influence on the permeability curves)
 L             = 2.5e-3;                                %m (adapt L to have a long enough domain with penetration depth)
 rho           = 2.5e-7;                                %Ohm/m (No influence on the permeability curves)
-H0_list       = [50,100]; %[1:4,5:5:100]*1e3;                     %A/m
-mattype       = 7;                                     %1-7
+H0_list       = [1:4,5:5:100]*1e3;                     %A/m
+mattype       = 2;                                     %1-7
 output        = '\Results\';                           %Output folder
 
 global param_phy
@@ -40,35 +40,35 @@ elseif mattype == 3
     
     param_phy.Temp_list = [25];        %celsius (informative only)
     
-% 4 : High field limit case (not used very much)
+% 4 : High field limit case (obsolete)
 %     B = mu0*H+Bsat if H > Hsat
-%     B = mu0*H-Bsat if H < -Hsat
-%     3rd order polynomial between -Hsat and Hsat
+%     B = mu0*H-Bsat if H < Hsat
+%     3rd order polynomial polynome de degre 3 qui assure la continuité de B et de dBdH sinon
 elseif mattype == 4
     param_phy.Bsat_list = [1];
     param_phy.Hsat_list = [20];
     
-    param_phy.Temp_list = [25];        %celsius (informative only)
+    param_phy.Temp_list = [25];        %celsius (informatif seulement)
     
-% 5: Preisach Model defining F and G functions from an elliptic major cycle
-%    defined with a constant complex permeability value (not used very much)
+% 5: Modele Preisach en definissant les fonctions F et G a partir d'un
+% cycle majeur en forme d'ellipse defini par la permeabilite constante
+% complexe
 elseif mattype == 5
     param_phy.mu_real_list = [100];
     param_phy.mu_imag_list = [-50];
     
-    param_phy.Temp_list = [25];        %celsius (informative only)
+    param_phy.Temp_list = [25];        %celsius (informatif seulement)
     
-% 6: Preisach Model with elliptic hysteretic curves (minor and major, 
-%    not optimal...)
+% 6: Modele Preisach avec l'hysteresis elliptique (mineur et majeur, pas optimal...)
 elseif mattype == 6
     param_phy.mu_real_list = [100];
     param_phy.mu_imag_list = [-5];
     
-    param_phy.Temp_list = [25];        %celsius (informative only)
+    param_phy.Temp_list = [25];        %celsius (informatif seulement)
     
-% 7 : Preisach 4 parameters non linear hysteretic model
+% 7 : non lineaire hysteretique modele de Preisach a 4 parametres
 elseif mattype == 7
-    %Usage of 4340 AISI data in MATLAB Figure
+    %Reprise des donnees de Kevin
     fig = open('AnalyseThermoMagnetique_4340ferrite.fig');
     axObjs = fig.Children;
     
@@ -99,7 +99,6 @@ elseif mattype == 7
     
     minlen = min([length(Temp1),length(Temp2),length(Temp3),length(Temp4),length(Temp5)]);
 
-    
     param_phy.Br_list = Brdata(1:minlen);    %T
     param_phy.Bsat_list = Bsatdata(1:minlen);  %T
     param_phy.Hc_list = Hcdata(1:minlen); %A/m
@@ -109,8 +108,7 @@ elseif mattype == 7
     param_phy.s_list = zeros(size(param_phy.Br_list));
     param_phy.b_list = zeros(size(param_phy.Br_list));
     
-    %Optimization of a, b and s parameters and convert Wh to s parameter
-    %for the Preisach model
+    %Optimisation des parametres a, b et s
     for i = 1:length(param_phy.Br_list)
         densite = 7850;
         Br = param_phy.Br_list(i);
@@ -125,9 +123,7 @@ elseif mattype == 7
         
         eq1 = @(x) mu0_const*x(5)+Fplus(x)+2*Gplus(x)-x(3);
         eq2 = @(x) 4*pi*x(1)*x(3)/(densite*(x(2)+2)*sin(pi/(x(2)+2)))-Wh;
-        eq3 = @(x) 1+((x(4)-x(3))/mu0_const).*((1./b(x)).*(1+(x(5)./b(x)).^(x(2)+1)).^(-1./(x(2)+1))+(x(5)./(b(x)))...
-            .*(-1./(x(2)+1)).*(1+(x(5)./b(x)).^(x(2)+1)).^((-1./(x(2)+1))-1).*((x(2)+1)./b(x)).*(x(5)./b(x)).^x(2))...
-            + (2*x(3)/mu0_const)*(1+(x(5)./x(1)).^(x(2)+2)).^(-2).*((x(2)+2)./x(1)).*(x(5)./x(1)).^(x(2)+1)-mur_max;
+        eq3 = @(x) 1+((x(4)-x(3))/mu0_const).*((1./b(x)).*(1+(x(5)./b(x)).^(x(2)+1)).^(-1./(x(2)+1))+(x(5)./(b(x))).*(-1./(x(2)+1)).*(1+(x(5)./b(x)).^(x(2)+1)).^((-1./(x(2)+1))-1).*((x(2)+1)./b(x)).*(x(5)./b(x)).^x(2)) + (2*x(3)/mu0_const)*(1+(x(5)./x(1)).^(x(2)+2)).^(-2).*((x(2)+2)./x(1)).*(x(5)./x(1)).^(x(2)+1)-mur_max;
         eq4 = @(x) x(3)-Br;
         eq5 = @(x) x(4)-Bsat;
         eq6 = @(x) x(5)-Hc;
@@ -151,16 +147,16 @@ elseif mattype == 7
         param_phy.Hc_list(i) = x(5);
         
     end
-    param_phy.Temp_list = Temp1(1:2);%minlen);        %celsius (informative only)
+    param_phy.Temp_list = Temp1(1)%:minlen);        %celsius (informatif seulement)
     
 else
-    error('Material type not implemented.')
+    error('Le type de materiau choisi n''est pas implemente.')
 end
 
 addpath('FEM_transitoire_fortran', 'FEM_PEM_1D')
 
 %% 1-D Transient losses
-SlabProblem_IO(freq, L, rho, H0_list, mattype, currentFolder, output);
+slabProblem_IO(freq, L, rho, H0_list, mattype, currentFolder, output);
 
 %% PEM
-PowerEquivalentModel(freq, L, rho, H0_list, mattype, currentFolder, output);
+powerEquivalentModel(freq, L, rho, H0_list, mattype, currentFolder, output);
