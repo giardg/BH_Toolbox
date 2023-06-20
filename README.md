@@ -25,7 +25,7 @@ The magnetic properties used in any model come from experimental measurements on
 ## Algorithm
 There are two main steps in the algorithm for the Power-Equivalent model:
 ### FEM_transitoire_fortran
-The first step of the code solves the 1-D time-transient slab diffusion problem with the scalar Preisach model to compute the eddy current and hysteresis losses as a function of x. The problem is solved in Fortran 90 using the finite element method (FEM). The losses curve are then stored in the folder. The current values used in our software represent magnetic measurements done on AISI4340 steel at Polytechnique Montreal. Corresponding loss curves are stored in Results\Resultats_transitoire_fortran. A user could describe other materials with this model.
+The first step of the code solves the 1-D time-transient slab diffusion problem with the scalar Preisach model to compute the eddy current and hysteresis losses as a function of x. The problem is solved in Fortran 90 using the finite element method (FEM). The losses curve are then stored in the folder. The current values used in our software represent magnetic measurements done on AISI4340 steel at Polytechnique Montreal. Corresponding loss curves are stored in Results\Transient_results. A user could describe other materials with this model.
 
 ### FEM_PEM_1D
 The second step uses the losses created from step 1 as inputs to solve the Power-Equivalent model. The equivalent permeability curves are then stored in Results\Resultats_mu.

@@ -1,4 +1,4 @@
-function [] = powerEquivalentModel(freq, L, rho, H0_list, mattype, currentFolder, output)
+function [] = powerEquivalentModel(freq, L, rho, H0_list, mattype, currentFolder, output, flag_real)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % powerEquivalentModel.m
@@ -27,6 +27,7 @@ param_num.phi0          = pi/2; %phase at x = 0
 param_num.sparsity      = false;
 param_num.amortissement = .1; %damping factor (slower but steady convergence: default = 1)
 param_num.correction    = true; %Apply correction on mu (correction and smoothing for low fields)
+display                 = true; %Display results (usually turn on if we have only 1 equivalent curve to compute)
 CF                      = [1,2]; %Boundary conditions on both edge (1 = Dirichlet, 2 = Neumann)
 
 
@@ -57,7 +58,7 @@ for H0 = H0_list
         % 2 : non-linear atan model
         %     B = mu0*H + 2*bsat/pi*atan(0.5*pi*mu0*(murmax-1)/bsat*H)
         elseif param_phy.mattype == 2
-            typename = 'Foucault';
+            typename = 'Anhyst';
             param_phy.murmax  = param_phy.murmax_list(i);
             param_phy.Bsat = param_phy.bsat_list(i);
             
@@ -67,16 +68,16 @@ for H0 = H0_list
         elseif param_phy.mattype == 3
             typename = 'Hysteresis';
             param_phy.natan   = param_phy.natan_list(i);
-            param_phy.ai = param_phy.ai_list(i);
-            param_phy.bi = param_phy.bi_list(i);
-            param_phy.ci = param_phy.ci_list(i);
+            param_phy.ai = param_phy.ai_list{i};
+            param_phy.bi = param_phy.bi_list{i};
+            param_phy.ci = param_phy.ci_list{i};
             
         % 4 : High field limit case (not used very much)
         %     B = mu0*H+Bsat if H > Hsat
         %     B = mu0*H-Bsat if H < -Hsat
         %     3rd order polynomial between -Hsat and Hsat
         elseif param_phy.mattype == 4
-            typename = 'Limites';
+            typename = 'Limit';
             param_phy.Bsat = param_phy.Bsat_list(i);
             param_phy.Hsat = param_phy.Hsat_list(i);
             
@@ -111,6 +112,10 @@ for H0 = H0_list
         
         % Get data in files
         [xvec_init, P_Joule, P_Hyst] = readLosses(freq, currentFolder, output);
+        if flag_real %We replace the joule loss by total loss to make the permeability purely real
+            P_Joule = P_Joule+P_Hyst;
+            P_Hyst = 0.*P_Hyst;
+        end
         P_exp = P_Joule+P_Hyst;
         
         % Initial approximation of the solution (must respect the BC)
@@ -146,14 +151,21 @@ for H0 = H0_list
         [Ptot_approx,Pjoule_approx,Physt_approx] = powerLosses(PQ,H2,mu);
         
         %% Display results
-        displayResults(xvec_init, P_Joule, P_Hyst, Hk, xvec, H, ...
-            dH, ddH, P_exp, P, mu_real, mu_im, ...
-            Pjoule_approx, Physt_approx, Ptot_approx)
+        if display
+            displayResults(xvec_init, P_Joule, P_Hyst, Hk, xvec, H, ...
+                dH, ddH, P_exp, P, mu_real, mu_im, ...
+                Pjoule_approx, Physt_approx, Ptot_approx)
+        end
         
         %% Save results
         filename = strcat('H0',{' '},string(param_phy.H0),'_mu',typename,'_',num2str(param_phy.Temp),'deg_',num2str(freq/1e3),'kHz');
         if param_num.correction filename = strcat(filename,'_corrected'); end
+        if flag_real filename = strcat(filename,'_real'); end
         filename = strcat(filename,'.txt');
-        dlmwrite(strcat(currentFolder, output, 'Mu_results\', filename), [H mu_real mu_im], '\t');
+        if flag_real
+            dlmwrite(strcat(currentFolder, output, 'Mu_results\', filename), [H mu_real], '\t');
+        else
+            dlmwrite(strcat(currentFolder, output, 'Mu_results\', filename), [H mu_real mu_im], '\t');
+        end
     end
 end

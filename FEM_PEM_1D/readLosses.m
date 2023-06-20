@@ -9,21 +9,21 @@ Temp = param_phy.Temp;
 
 switch mattype
     case 1
-        pertesType = 'PertesLinear';
+        pertesType = 'LossesLinear';
     case 2
-        pertesType = 'PertesFoucault';
+        pertesType = 'LossesAnhyst';
     case 3
-        pertesType = 'PertesHysteresis';
+        pertesType = 'LossesHysteresis';
     case 4
-        pertesType = 'PertesLimites';
+        pertesType = 'LossesLimit';
     case 5
-        pertesType = 'PertesEllipse';
+        pertesType = 'LossesEllipse';
     case 6
-        pertesType = 'PertesEllipse2';
+        pertesType = 'LossesEllipse2';
     case 7
-        pertesType = 'PertesHysteresis2';
+        pertesType = 'LossesHysteresis2';
     otherwise
-        error('Materiau pas implemente\n')
+        error('Material not implemented\n')
 end
 
 filename = strcat('H0',{' '},string(H0),'_',pertesType,'_',string(longueur*1e3),'mm_',num2str(Temp),'deg_', num2str(freq/1e3), 'kHz.txt');

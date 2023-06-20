@@ -4,6 +4,7 @@ close all
 
 mu0_const = 4*pi*1e-7;
 currentFolder = pwd;
+addpath('FEM_transient_fortran', 'FEM_PEM_1D', 'Material_computation')
 
 %% Input parameters
 freq          = 10e3;                                  %Hz (No influence on the permeability curves)
@@ -12,7 +13,8 @@ rho           = 2.5e-7;                                %Ohm/m (No influence on t
 H0_list       = [1:4,5:5:100]*1e3;                     %A/m
 mattype       = 7;                                     %1-7
 output        = '\Results\';                           %Output folder
-
+flag_real     = false;                                 %Flag if we want to approximate with only a real permeability
+                                                       %(i.e. Pj+Ph -> Pj)
 global param_phy
 
 %% Material type
@@ -33,12 +35,12 @@ elseif mattype == 2
 %     B+ = Sum ai*atan((H+ci)/bi)
 %     B- = Sum ai*atan((H-ci)/bi)
 elseif mattype == 3
-    param_phy.natan_list   = [1];
-    param_phy.ai_list = [3.6/pi];
-    param_phy.ci_list = [1.7e3];
-    param_phy.bi_list = param_phy.ci_list./(tan(1.4./param_phy.ai_list));
+    param_phy.natan_list   = [1,2];
+    param_phy.ai_list = {[3.6/pi],[3.6/pi,0.36/pi]};
+    param_phy.ci_list = {[1.7e3],[1.7e3,1.7e3]};
+    param_phy.bi_list = {[618.74],[618.74,618.74]};
     
-    param_phy.Temp_list = [25];        %celsius (informative only)
+    param_phy.Temp_list = [25,50];        %celsius (informative only)
     
 % 4 : High field limit case (not used very much)
 %     B = mu0*H+Bsat if H > Hsat
@@ -46,7 +48,7 @@ elseif mattype == 3
 %     3rd order polynomial between -Hsat and Hsat
 elseif mattype == 4
     param_phy.Bsat_list = [1];
-    param_phy.Hsat_list = [20];
+    param_phy.Hsat_list = [100];
     
     param_phy.Temp_list = [25];        %celsius (informative only)
     
@@ -54,7 +56,7 @@ elseif mattype == 4
 %    defined with a constant complex permeability value (not used very much)
 elseif mattype == 5
     param_phy.mu_real_list = [100];
-    param_phy.mu_imag_list = [-50];
+    param_phy.mu_imag_list = [-10];
     
     param_phy.Temp_list = [25];        %celsius (informative only)
     
@@ -68,99 +70,71 @@ elseif mattype == 6
     
 % 7 : Preisach 4 parameters non linear hysteretic model
 elseif mattype == 7
-    %Usage of 4340 AISI data in MATLAB Figure
-    fig = open('AnalyseThermoMagnetique_4340ferrite.fig');
-    axObjs = fig.Children;
     
-    %Wh
-    dataObjs =  axObjs(1).Children;
-    Temp1 = dataObjs(2).XData;
-    Whdata = dataObjs(2).YData;
+    densite = 7850;
+    param_phy.Br_list = [0.933108696857510,...
+        0.920305377456978,0.930197751762866,...
+        0.926456606409189,0.907901897554444,...
+        0.834068184565533,0.821744739128845,...
+        0.770564680189743,0.751389871375226,...
+        0.679519143367053,0.600291623357859,...
+        0.546451764614761,0.447966383479637,...
+        0.294911109267253,0.117203883430224]; %T
     
-    %Hc
-    dataObjs =  axObjs(2).Children;
-    Temp2 = dataObjs(2).XData;
-    Hcdata = dataObjs(2).YData;
+    param_phy.Bsat_list = [1.96514555000160,...
+        1.89816938124426,1.80278279035741,...
+        1.72179361157548,1.63349133258213,...
+        1.54758208394500,1.50581060201378,...
+        1.42710185702372,1.37893617396983,...
+        1.26059864901288,1.13165570989077,...
+        1.03681069040786,0.923484496007370,...
+        0.779667342725369,0.569298099828659];  %T
     
-    %Br
-    dataObjs =  axObjs(3).Children;
-    Temp3 = dataObjs(2).XData;
-    Brdata = dataObjs(2).YData;
+    param_phy.Hc_list = [1.95434793735610,...
+        1.99679351082121,2.00604344074037,...
+        1.77397723667928,1.49198530528908,...
+        1.24745259010741,1.17284459110538,...
+        1.04743752016454,0.975494190801733,...
+        0.828481584863761,0.681070834335290,...
+        0.589536030141750,0.507417304279865,...
+        0.420054615271398,0.309345454205599]*1e3; %A/m
     
-    %Bsat
-    dataObjs =  axObjs(4).Children;
-    Temp4 = dataObjs(2).XData;
-    Bsatdata = dataObjs(2).YData;
+    param_phy.Wh_list = [10.6002733081384,...
+        10.6712910496742,10.5273882482361,...
+        8.45674877296000,6.82871746205513,...
+        5.44235966335567,5.01539958455657,...
+        4.35243578913929,3.97342776473797,...
+        3.29549446907246,2.63188834671565,...
+        2.24470941769569,1.87330007080518,...
+        1.50684313735103,1.15671952792303]*1e3/densite; %J/kg;
     
-    %murmax
-    dataObjs =  axObjs(5).Children;
-    Temp5 = dataObjs(2).XData;
-    murmaxdata = dataObjs(2).YData;
+    param_phy.mur_max_list = [670.569648615508,...
+        687.872892200044,725.034216103888,...
+        824.954654313757,911.258096055197,...
+        968.896684679610,970.918365865108,...
+        949.275856912466,930.437384409310,...
+        900.758765048889,889.189340732500,...
+        859.018984882164,774.678574845519,...
+        615.496262753714,295.014147745148]; %not necessary, will be calculated if missing
     
-    minlen = min([length(Temp1),length(Temp2),length(Temp3),length(Temp4),length(Temp5)]);
 
+    param_phy.Temp_list = [24.7297379595883,...
+        113.390619575718,246.013103219732,...
+        409.207259467707,461.194556251831,...
+        506.975677300830,522.429199176500,...
+        547.161505490999,560.895854473397,...
+        584.962374821997,607.172498517265,...
+        620.125559533445,632.554505459268,...
+        645.927268534192,663.035642782262]; %celsius (informative only)
     
-    param_phy.Br_list = Brdata(1:minlen);    %T
-    param_phy.Bsat_list = Bsatdata(1:minlen);  %T
-    param_phy.Hc_list = Hcdata(1:minlen); %A/m
-    param_phy.Wh_list = Whdata(1:minlen);
-    param_phy.mur_max_list = murmaxdata(1:minlen);
-    param_phy.a_list = zeros(size(param_phy.Br_list));
-    param_phy.s_list = zeros(size(param_phy.Br_list));
-    param_phy.b_list = zeros(size(param_phy.Br_list));
-    
-    %Optimization of a, b and s parameters and convert Wh to s parameter
-    %for the Preisach model
-    for i = 1:length(param_phy.Br_list)
-        densite = 7850;
-        Br = param_phy.Br_list(i);
-        Bsat = param_phy.Bsat_list(i);
-        Hc = param_phy.Hc_list(i)*1000;
-        Wh = param_phy.Wh_list(i)*1000/densite;
-        mur_max = param_phy.mur_max_list(i);
-        
-        b = @(x) x(1).*(x(2)+sqrt((x(4)-x(3))./x(3)));
-        Fplus = @(x)  (x(4)-x(3))*(x(5)./b(x)).*(1+(x(5)./b(x)).^(x(2)+1)).^(-1/(x(2)+1));
-        Gplus = @(x) x(3)-x(3)*(1+(x(5)./x(1)).^(x(2)+2)).^(-1);
-        
-        eq1 = @(x) mu0_const*x(5)+Fplus(x)+2*Gplus(x)-x(3);
-        eq2 = @(x) 4*pi*x(1)*x(3)/(densite*(x(2)+2)*sin(pi/(x(2)+2)))-Wh;
-        eq3 = @(x) 1+((x(4)-x(3))/mu0_const).*((1./b(x)).*(1+(x(5)./b(x)).^(x(2)+1)).^(-1./(x(2)+1))+(x(5)./(b(x)))...
-            .*(-1./(x(2)+1)).*(1+(x(5)./b(x)).^(x(2)+1)).^((-1./(x(2)+1))-1).*((x(2)+1)./b(x)).*(x(5)./b(x)).^x(2))...
-            + (2*x(3)/mu0_const)*(1+(x(5)./x(1)).^(x(2)+2)).^(-2).*((x(2)+2)./x(1)).*(x(5)./x(1)).^(x(2)+1)-mur_max;
-        eq4 = @(x) x(3)-Br;
-        eq5 = @(x) x(4)-Bsat;
-        eq6 = @(x) x(5)-Hc;
-        
-        options = optimoptions('lsqnonlin','Display','iter');
-        options.FunctionTolerance = 1e-18;
-        options.OptimalityTolerance = 1e-18;
-        options.StepTolerance = 1e-18;
-        options.MaxFunctionEvaluations=5000;
-        F = @(x) [eq1(x),eq2(x),eq3(x),eq4(x),eq5(x),eq6(x)];
-        lb = [0,0,0,0,0];
-        ub = [Inf,10,Inf,Inf,Inf];
-        x0 = [1e4,5,Br,Bsat,Hc];
-        
-        [x,fval] = lsqnonlin(F,x0,lb,ub,options);
-        param_phy.a_list(i) = x(1);
-        param_phy.s_list(i) = x(2);
-        param_phy.b_list(i) = x(1).*(x(2)+sqrt((Bsat-Br)./Br));
-        param_phy.Br_list(i) = x(3);
-        param_phy.Bsat_list(i) = x(4);
-        param_phy.Hc_list(i) = x(5);
-        
-    end
-    param_phy.Temp_list = Temp1(1:minlen);        %celsius (informative only)
+    computePreisach4p(densite);
     
 else
     error('Material type not implemented.')
 end
 
-addpath('FEM_transient_fortran', 'FEM_PEM_1D')
-
 %% 1-D Transient losses
 slabProblem_IO(freq, L, rho, H0_list, mattype, currentFolder, output);
 
 %% PEM
-powerEquivalentModel(freq, L, rho, H0_list, mattype, currentFolder, output);
+powerEquivalentModel(freq, L, rho, H0_list, mattype, currentFolder, output, flag_real);
