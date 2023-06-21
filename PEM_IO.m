@@ -4,9 +4,9 @@ close all
 
 mu0_const = 4*pi*1e-7;
 currentFolder = pwd;
-addpath('FEM_transient_fortran', 'FEM_PEM_1D', 'Material_computation')
+addpath('FEM_transient_fortran', 'FEM_PEM_1D', 'Material_computation\Preisach4p')
 
-%% Input parameters
+%% Input parameters (modify this section)
 freq          = 10e3;                                  %Hz (No influence on the permeability curves)
 L             = 2.5e-3;                                %m (adapt L to have a long enough domain with penetration depth)
 rho           = 2.5e-7;                                %Ohm/m (No influence on the permeability curves)
@@ -17,7 +17,7 @@ flag_real     = false;                                 %Flag if we want to appro
                                                        %(i.e. Pj+Ph -> Pj)
 global param_phy
 
-%% Material type
+%% Material type (modify this section from material data)
 % 1 : constant relative permeability
 %     B = mu0*mur*H
 if mattype == 1
@@ -35,10 +35,13 @@ elseif mattype == 2
 %     B+ = Sum ai*atan((H+ci)/bi)
 %     B- = Sum ai*atan((H-ci)/bi)
 elseif mattype == 3
-    param_phy.natan_list   = [1,2];
-    param_phy.ai_list = {[3.6/pi],[3.6/pi,0.36/pi]};
-    param_phy.ci_list = {[1.7e3],[1.7e3,1.7e3]};
-    param_phy.bi_list = {[618.74],[618.74,618.74]};
+    param_phy.natan_list   = [4,3];
+    param_phy.ai_list = {[0.222234 0.085940 0.000199 0.208065],...
+                        [0.179423 0.159439 0.171000]}; %cell here
+    param_phy.ci_list = {[508233.811830 201473.772158 1583271765.188869 143185.505368],...
+                        [284494.348644 284496.998344 284520.059481]};
+    param_phy.bi_list = {[192468.663522 416340.869699 1631059.566573 509697.338662], ...
+                        [391972.310382 391697.906999 391714.412949]};
     
     param_phy.Temp_list = [25,50];        %celsius (informative only)
     

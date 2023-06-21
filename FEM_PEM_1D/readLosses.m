@@ -34,5 +34,5 @@ if isfile(strcat(currentFolder, output, '\Transient_results\', filename))
     P_Joule = A(:,2);
     P_Hyst = A(:,3);
 else
-     error('Le fichier %s n''existe pas, vous pouvez le creer a partir du programme dans FEM_transitoire_fortran',filename)
+     error('The file %s does not exist, it can be created by running FEM_transient_fortran',filename)
 end
