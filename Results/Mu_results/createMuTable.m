@@ -10,9 +10,11 @@ height=550;
 
 %% Parametres
 mu0 = 4*pi*1E-7;
-Tempvec = [24.7297,113.3906,246.0131,409.2073,461.1946,506.9757,522.4292,547.1615,560.8959,584.9624,607.1725,620.1256,632.5545,645.9273,663.0356, 775]; %liste des fichiers disponible
+Tempvec = [24.7297,113.3906,246.0131,409.2073,...
+    461.1946,506.9757,522.4292,547.1615,560.8959,...
+    584.9624,607.1725,620.1256,632.5545,645.9273,663.0356]; %liste des fichiers disponible
 %Tempvec = [24.7297,113.3906];
-H0_list = [1:4,5:5:100]*1e3; %liste des fichiers disponible
+H0_list = [1:4,5:5:40]*1e3; %liste des fichiers disponible
 %H0_list = [5,10]*1e3; %liste des fichiers disponible
 freq = 10*1e3;
 longueur = 2.5e-3;
@@ -32,15 +34,15 @@ mu_im_export = [];
 if mattype == 1
     typename = 'Linear';
 elseif mattype == 2
-    typename = 'Foucault';
+    typename = 'Anhyst';
 elseif mattype == 3
     typename = 'Hysteresis';
 elseif mattype == 4
-    typename = 'Limites';
+    typename = 'Limit';
 elseif mattype == 7
     typename = 'Hysteresis2';
 else
-    error('Le type de materiau choisi n''est pas implemente.')
+    error('Material type not implemented.')
 end
 
 
@@ -72,7 +74,7 @@ for H0 = H0_list
                 
                 
             else
-                error('Le fichier %s n''existe pas',filename)
+                error('The file %s does not exist',filename)
             end
             
             %     if rem(H0*1e-3,5) ~= 0

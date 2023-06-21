@@ -10,7 +10,7 @@ addpath('FEM_transient_fortran', 'FEM_PEM_1D', 'Material_computation\Preisach4p'
 freq          = 10e3;                                  %Hz (No influence on the permeability curves)
 L             = 2.5e-3;                                %m (adapt L to have a long enough domain with penetration depth)
 rho           = 2.5e-7;                                %Ohm/m (No influence on the permeability curves)
-H0_list       = [1:4,5:5:100]*1e3;                     %A/m
+H0_list       = [1:4,5:5:50]*1e3;                     %A/m
 mattype       = 7;                                     %1-7
 output        = '\Results\';                           %Output folder
 flag_real     = false;                                 %Flag if we want to approximate with only a real permeability
