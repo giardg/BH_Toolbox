@@ -9,8 +9,8 @@ authors:
   given-names: "Jaël"
 - family-names: "Sirois"
   given-names: "Frédéric"
-title: "PowerEquivalentModel"
+title: "BH_Toolbox"
 version: 1.0.0
-doi: 10.5281/zenodo.1234
+doi: 10.5281/zenodo.8156765
 date-released: 2023-07-17
 url: "https://github.com/giardg/BH_Toolbox"
