@@ -7,6 +7,8 @@ authors:
   given-names: "Maxime"
 - family-names: "Giguère"
   given-names: "Jaël"
+- family-names: "Sirois"
+  given-names: "Frédéric"
 title: "PowerEquivalentModel"
 version: 1.0.0
 doi: 10.5281/zenodo.1234
