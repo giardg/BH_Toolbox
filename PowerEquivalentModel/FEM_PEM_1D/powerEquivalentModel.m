@@ -27,7 +27,7 @@ param_num.phi0          = pi/2; %phase at x = 0
 param_num.sparsity      = false;
 param_num.amortissement = .1; %damping factor (slower but steady convergence: default = 1)
 param_num.correction    = true; %Apply correction on mu (correction and smoothing for low fields)
-display                 = true; %Display results (usually turn on if we have only 1 equivalent curve to compute)
+display                 = false; %Display results (usually turn on if we have only 1 equivalent curve to compute)
 CF                      = [1,2]; %Boundary conditions on both edge (1 = Dirichlet, 2 = Neumann)
 
 

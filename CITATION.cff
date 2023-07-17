@@ -5,8 +5,10 @@ authors:
   given-names: "Gregory"
 - family-names: "Tousignant"
   given-names: "Maxime"
+- family-names: "Giguère"
+  given-names: "Jaël"
 title: "PowerEquivalentModel"
 version: 1.0.0
 doi: 10.5281/zenodo.1234
-date-released: 2021-09-01
-url: "https://github.com/giardg/PowerEquivalentModel"
+date-released: 2023-07-17
+url: "https://github.com/giardg/BH_Toolbox"

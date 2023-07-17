@@ -4,7 +4,7 @@ close all
 
 mu0_const = 4*pi*1e-7;
 currentFolder = pwd;
-addpath('FEM_transient_fortran', 'FEM_PEM_1D', 'Material_computation\Preisach4p')
+addpath('FEM_transient_fortran', 'FEM_PEM_1D', '..\Material_computation\Preisach4p')
 
 %% Input parameters (modify this section)
 freq          = 10e3;                                  %Hz (No influence on the permeability curves)
